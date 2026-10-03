@@ -12,6 +12,7 @@ const kinds = {
   buildings: sprite(768),
   characters: sprite(768),
   items: sprite(256),
+  events: sprite(512),
 }
 
 let count = 0
