@@ -63,6 +63,12 @@ src/
 - 이미지는 `src/assets/` 아래 종류별 폴더(`backgrounds/`, `monsters/`, `characters/`, `items/`, `ui/`)에 두고, 파일명은 데이터의 id와 맞춘다.
 - 이미지가 아직 없는 콘텐츠는 같은 크기의 플레이스홀더로 표시하고, 그 상태로도 게임이 끝까지 진행되어야 한다.
 
+### 소리
+
+- 효과음은 파일 없이 `src/ui/sfx.ts`에서 Web Audio로 합성한다.
+- 배경음악은 Suno로 만든 곡을 `afconvert -f m4af -d aac -b 112000 -q 127 <원본.wav> src/assets/bgm/<id>.m4a`로 변환해 넣는다. 원본 WAV는 git에 올리지 않는다.
+- 트랙 id: `title`, `town`, `battle`, `boss`, `ending`, 그리고 지역 id와 같은 이름의 지역 곡. 장면과 곡의 연결은 `src/ui/App.tsx`의 `track`.
+
 ### 화풍: 손그림 동화풍
 
 - 기준 이미지는 `art/style-reference.png`. 모든 이미지는 이 그림과 한 세트로 보여야 한다.
@@ -102,11 +108,10 @@ npm test         # 게임 로직 테스트
 
 ## 현재 상태
 
-처음부터 엔딩까지 플레이 가능하며 https://whitejbb.github.io/rpg-game-web/ 에 배포되어 있다 (`main`에 푸시하면 자동 배포).
+처음부터 엔딩까지 플레이 가능하며 https://earth.devtrail.kr/ 에 배포되어 있다 (`main`에 푸시하면 자동 배포).
 
 다음 개선 후보:
 
-- 효과음과 배경음악
 - 지역별 랜덤 이벤트와 퀘스트 추가
 - 엔딩 이후 콘텐츠 (더 강한 보스, 2회차)
 - 포션(소)와 포션(중) 아이콘 구분, 장비 착용 시 주인공 모습 변화

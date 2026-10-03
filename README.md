@@ -2,7 +2,7 @@
 
 고등학교 때 C로 만든 콘솔 Text RPG의 컨셉을 이어받아 새로 만든 **이미지 중심 클릭형 웹 RPG**입니다.
 
-**▶ 플레이: https://whitejbb.github.io/rpg-game-web/** (설치 없이 브라우저에서, 모바일 지원)
+**▶ 플레이: https://earth.devtrail.kr/** (설치 없이 브라우저에서, 모바일 지원)
 
 | 전투 | 지도 |
 |---|---|
@@ -23,6 +23,7 @@
 - TypeScript + React + Vite, 서버 없는 정적 사이트 (GitHub Pages)
 - 테스트: Vitest
 - 이미지: AI 이미지 생성(Codex CLI)으로 만든 손그림 동화풍 일러스트 60장
+- 소리: 효과음은 Web Audio 합성, 배경음악 9곡은 Suno로 생성
 
 ```
 src/
