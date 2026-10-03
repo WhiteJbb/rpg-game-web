@@ -235,10 +235,12 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
               {SPELLS.filter((sp) => p.spells.includes(sp.id)).map((sp) => (
                 <button key={sp.id} className="btn btn-item" disabled={locked || shown.pmp < sp.mp} onClick={() => run({ type: 'cast', spellId: sp.id })}>
                   <Art kind="items" id={sp.id} alt="" className="icon" fallback="✨" />
-                  {sp.name}
-                  <small>
-                    {sp.desc} · MP {sp.mp}
-                  </small>
+                  <span className="item-text">
+                    {sp.name}
+                    <small>
+                      <b className="mp-cost">MP {sp.mp}</b> · {sp.desc}
+                    </small>
+                  </span>
                 </button>
               ))}
               <button className="btn" onClick={() => setMenu(null)}>
@@ -251,8 +253,12 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
               {POTIONS.map((po) => (
                 <button key={po.id} className="btn btn-item" disabled={locked || p.potions[po.id] < 1} onClick={() => run({ type: 'usePotion', potionId: po.id })}>
                   <Art kind="items" id={po.id} alt="" className="icon" fallback="🧪" />
-                  {po.name}
-                  <small>×{p.potions[po.id]}</small>
+                  <span className="item-text">
+                    {po.name}
+                    <small>
+                      {po.hp ? `HP +${po.hp}` : `MP +${po.mp}`} · {p.potions[po.id]}개
+                    </small>
+                  </span>
                 </button>
               ))}
               <button className="btn" onClick={() => setMenu(null)}>

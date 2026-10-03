@@ -327,9 +327,13 @@ input {
 @keyframes shake { 20% { transform: translateX(-8px); } 50% { transform: translateX(7px); } 80% { transform: translateX(-4px); } }
 .actions { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .actions .btn { padding: 10px 4px; }
-.actions-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.actions-list { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 .btn-item { font-size: 0.95rem; padding: 6px 10px; justify-content: flex-start; }
-.btn-item small { margin-left: auto; white-space: nowrap; }
+/* 아이콘 옆에 이름과 설명을 두 줄로. 길면 칸 안에서 줄바꿈한다. */
+.item-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; line-height: 1.25; }
+.item-text small { font-family: 'Gowun Dodum', system-ui, sans-serif; }
+.mp-cost { color: #2f6fb5; font-weight: 700; }
+.btn-item .icon, .chip .icon { flex-shrink: 0; }
 .hint { color: var(--accent-dark); margin: 0; }
 @media (max-width: 720px) {
   .battle-row { flex-direction: column; }
@@ -423,7 +427,7 @@ input {
 .stat-name { font-family: var(--title-font); }
 .stat-val em { color: var(--exp); font-style: normal; font-size: 0.85em; }
 .btn-plus { min-height: 40px; height: 40px; width: 40px; padding: 0; font-size: 1.2rem; box-shadow: 0 2px 0 var(--line); }
-.bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+.bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; background: #fff8ea; border: 2px solid var(--paper-dark); border-radius: 10px; padding: 4px 8px; }
 .char-foot { margin-top: 14px; justify-content: space-between; }
 @media (max-width: 620px) {
