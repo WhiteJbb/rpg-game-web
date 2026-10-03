@@ -77,7 +77,7 @@ src/
 ### 소리
 
 - 효과음은 파일 없이 `src/ui/sfx.ts`에서 Web Audio로 합성한다.
-- 배경음악은 Suno로 만든 곡을 `afconvert -f m4af -d aac -b 112000 -q 127 <원본.wav> src/assets/bgm/<id>.m4a`로 변환해 넣는다. 원본 WAV는 git에 올리지 않는다.
+- 배경음악은 Stable Audio로 만든 곡을 `afconvert -f m4af -d aac -b 112000 -q 127 <원본.wav> src/assets/bgm/<id>.m4a`로 변환해 넣는다. 원본 WAV는 git에 올리지 않는다.
 - 트랙 id: `title`, `town`, `battle`, `boss`, `ending`, 그리고 지역 id와 같은 이름의 지역 곡. 장면과 곡의 연결은 `src/ui/App.tsx`의 `track`.
 
 ### 화풍: 손그림 동화풍

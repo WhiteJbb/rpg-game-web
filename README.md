@@ -57,7 +57,7 @@
 - TypeScript + React + Vite, 서버 없는 정적 사이트 (GitHub Pages)
 - 테스트: Vitest
 - 이미지: AI 이미지 생성(Codex CLI)으로 만든 손그림 동화풍 일러스트 95장
-- 소리: 효과음은 Web Audio로 합성, 배경음악 9곡은 Suno로 생성
+- 소리: 효과음은 Web Audio로 합성, 배경음악 9곡은 Stable Audio로 생성
 
 ```
 src/
@@ -133,6 +133,6 @@ npm run build    # 타입 체크 + 프로덕션 빌드
 
 - **코드** — Claude Code. 기능별 브랜치와 PR로 작업하고, 브라우저 자동화로 화면을 확인했습니다.
 - **이미지** — Codex CLI의 이미지 생성. 기준 그림 한 장(`art/style-reference.png`)을 모든 요청에 함께 넘겨 화풍을 통일했습니다.
-- **배경음악** — Suno.
+- **배경음악** — Stable Audio.
 
 개발 지침은 [CLAUDE.md](CLAUDE.md)에 있습니다.
