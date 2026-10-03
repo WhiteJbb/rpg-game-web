@@ -423,7 +423,7 @@ input {
 .casino .shop-head { width: 100%; }
 .reels { display: flex; gap: 10px; justify-content: center; }
 .reel { width: clamp(72px, 22vw, 120px); aspect-ratio: 1; background: #fff; border: 4px solid var(--line); border-radius: 14px; display: grid; place-items: center; box-shadow: inset 0 6px 10px rgba(0, 0, 0, 0.15); }
-.reel-art { width: 80%; height: 80%; }
+.reel-art { width: 80%; height: auto; aspect-ratio: 1; }
 .reel-art.art-missing { font-size: clamp(2.2rem, 9vw, 4rem); }
 .spinning .reel-art { animation: reel 0.16s linear infinite; }
 @keyframes reel { from { transform: translateY(-14%); opacity: 0.6; } to { transform: translateY(14%); opacity: 1; } }
@@ -439,8 +439,9 @@ input {
 .gear-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .gear-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; text-align: center; }
 .gear-slot small { line-height: 1.2; }
-.gear-box { position: relative; width: 100%; max-width: 64px; aspect-ratio: 1; background: #fff8ea; border: 2px solid var(--line); border-radius: 10px; display: grid; place-items: center; }
-.gear-art { width: 84%; height: 84%; }
+/* 크기를 픽셀로 고정한다: % 높이는 브라우저에 따라 계산되지 않아 그림이 원본 크기로 튀어나온다 */
+.gear-box { position: relative; width: 60px; height: 60px; background: #fff8ea; border: 2px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.gear-art { width: 48px; height: 48px; flex: none; }
 .gear-none { font-size: 1.4rem; filter: grayscale(1); opacity: 0.35; }
 .gear-empty .gear-box { border-style: dashed; border-color: var(--paper-dark); }
 .gear-empty small { opacity: 0.6; }
