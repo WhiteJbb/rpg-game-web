@@ -4,7 +4,8 @@ import { newGame, reduce } from '../game/engine'
 import { SAVE_KEY, deserialize, serialize } from '../game/save'
 import type { Action, GameState } from '../game/types'
 import { Scene } from './art'
-import { Dialog, Hud } from './common'
+import { Dialog, Hud, MuteButton } from './common'
+import { sfx } from './sfx'
 import { Battle, type BattleOutcome } from './screens/Battle'
 import { Casino } from './screens/Casino'
 import { Character } from './screens/Character'
@@ -52,15 +53,25 @@ export function App() {
     return () => clearTimeout(id)
   }, [toast])
 
+  // 모든 버튼에 공통 클릭음
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => (e.target as Element).closest?.('button:not(.mute)') && sfx('click')
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+  }, [])
+
   const say = (text: string) => setToast({ key: Date.now(), text })
 
   const act = (action: Action): GameState => {
     const next = reduce(game!, action, Math.random)
     setGame(next)
     for (const e of next.events) {
-      if (e.t === 'error') say(e.text)
-      else if (e.t === 'bought') say('구매 완료!')
-      else if (e.t === 'rest') say('푹 쉬었다. HP와 MP가 전부 회복되었다!')
+      if (e.t === 'error') (say(e.text), sfx('error'))
+      else if (e.t === 'bought') (say('구매 완료!'), sfx('coin'))
+      else if (e.t === 'rest') (say('푹 쉬었다. HP와 MP가 전부 회복되었다!'), sfx('heal'))
+      else if (e.t === 'encounter') sfx('encounter')
+      else if (e.t === 'treasure') sfx('coin')
+      else if (e.t === 'spring') sfx('heal')
     }
     return next
   }
@@ -70,7 +81,7 @@ export function App() {
 
   const afterBattle = (outcome: BattleOutcome, regionId: string) => {
     if (outcome.type === 'defeat') return setScreen({ n: 'town' })
-    if (outcome.type === 'fled') say('무사히 도망쳤다!')
+    if (outcome.type === 'fled') (say('무사히 도망쳤다!'), sfx('dodge'))
     const cleared = outcome.type === 'victory' ? outcome.victory.bossFirst : null
     if (!cleared) return setScreen({ n: 'region', id: regionId })
     const afterStory: Screen = game!.cleared ? { n: 'story', bg: 'town', lines: ENDING, next: { n: 'town' } } : { n: 'map' }
@@ -79,14 +90,17 @@ export function App() {
 
   if (screen.n === 'title' || !game) {
     return (
-      <Title
-        hasSave={game !== null}
-        onContinue={() => resume(game!)}
-        onNew={(name) => {
-          setGame(newGame(name))
-          setScreen({ n: 'story', bg: 'meadow', lines: INTRO, next: { n: 'town' } })
-        }}
-      />
+      <>
+        <MuteButton className="mute-float" />
+        <Title
+          hasSave={game !== null}
+          onContinue={() => resume(game!)}
+          onNew={(name) => {
+            setGame(newGame(name))
+            setScreen({ n: 'story', bg: 'meadow', lines: INTRO, next: { n: 'town' } })
+          }}
+        />
+      </>
     )
   }
 
@@ -142,7 +156,7 @@ export function App() {
   const inBattle = screen.n === 'battle'
   return (
     <div className="game">
-      {!inBattle && screen.n !== 'story' && <Hud player={game.player} onCharacter={() => setShowChar(true)} />}
+      {!inBattle && screen.n !== 'story' ? <Hud player={game.player} onCharacter={() => setShowChar(true)} /> : <MuteButton className="mute-float" />}
       {body}
       {showChar && (
         <Character
