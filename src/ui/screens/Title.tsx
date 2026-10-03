@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Scene } from '../art'
+import { Confirm } from '../common'
 
 interface Props {
   hasSave: boolean
@@ -10,10 +11,8 @@ interface Props {
 export function Title({ hasSave, onContinue, onNew }: Props) {
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
-  const start = () => {
-    if (hasSave && !confirm('저장된 모험이 지워집니다. 새로 시작할까요?')) return
-    onNew(name)
-  }
+  const [confirming, setConfirming] = useState(false)
+  const start = () => (hasSave ? setConfirming(true) : onNew(name))
   return (
     <Scene bg="title" className="title-scene">
       <h1 className="logo">
@@ -52,6 +51,7 @@ export function Title({ hasSave, onContinue, onNew }: Props) {
           </>
         )}
       </div>
+      {confirming && <Confirm text="저장된 모험이 지워집니다. 새로 시작할까요?" yes="새로 시작" onYes={() => onNew(name)} onNo={() => setConfirming(false)} />}
     </Scene>
   )
 }

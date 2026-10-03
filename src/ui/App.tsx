@@ -11,6 +11,7 @@ import { sfx } from './sfx'
 import { Battle, type BattleOutcome } from './screens/Battle'
 import { Casino } from './screens/Casino'
 import { Character } from './screens/Character'
+import { Ending } from './screens/Ending'
 import { Region } from './screens/Region'
 import { Quests, claimableQuests } from './screens/Quests'
 import { EquipShop, Inn, MagicShop, PotionShop } from './screens/Shops'
@@ -26,6 +27,7 @@ type Screen =
   | { n: 'battle'; monsterId: string; regionId: string; seq: number }
   | { n: 'place'; place: Exclude<Place, 'gate'> }
   | { n: 'story'; bg: string; lines: string[]; next: Screen }
+  | { n: 'ending' }
 
 function loadSave(): GameState | null {
   try {
@@ -70,6 +72,7 @@ export function App() {
     screen.n === 'region' ? screen.id :
     screen.n === 'battle' ? (monsterById(screen.monsterId).boss ? 'boss' : 'battle') :
     screen.n === 'story' ? (screen.lines === ENDING ? 'ending' : null) :
+    screen.n === 'ending' ? 'ending' :
     'town'
   useEffect(() => {
     if (track) setBgm(track)
@@ -100,7 +103,7 @@ export function App() {
     if (outcome.type === 'fled') (say('무사히 도망쳤다!'), sfx('dodge'))
     const cleared = outcome.type === 'victory' ? outcome.victory.bossFirst : null
     if (!cleared) return setScreen({ n: 'region', id: regionId })
-    const afterStory: Screen = game!.cleared ? { n: 'story', bg: 'town', lines: ENDING, next: { n: 'town' } } : { n: 'map' }
+    const afterStory: Screen = game!.cleared ? { n: 'story', bg: 'ending', lines: ENDING, next: { n: 'ending' } } : { n: 'map' }
     setScreen({ n: 'story', bg: regionId, lines: BOSS_CLEAR[regionId], next: afterStory })
   }
 
@@ -129,6 +132,9 @@ export function App() {
           <Dialog key={screen.lines[0]} lines={screen.lines} onDone={() => setScreen(screen.next)} />
         </Scene>
       )
+      break
+    case 'ending':
+      body = <Ending game={game} onContinue={() => setScreen({ n: 'town' })} />
       break
     case 'town':
       body = <Town onEnter={(place) => setScreen(place === 'gate' ? { n: 'map' } : { n: 'place', place })} />
@@ -172,7 +178,7 @@ export function App() {
   const inBattle = screen.n === 'battle'
   return (
     <div className="game">
-      {!inBattle && screen.n !== 'story' ? <Hud player={game.player} onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
+      {!inBattle && screen.n !== 'story' && screen.n !== 'ending' ? <Hud player={game.player} onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
       {body}
       {showChar && (
         <Character

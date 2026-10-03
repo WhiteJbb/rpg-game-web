@@ -100,6 +100,23 @@ export function Modal({ title, onClose, children, wide }: { title?: string; onCl
   )
 }
 
+/** 브라우저 기본 confirm() 대신 쓰는 확인 창 */
+export function Confirm({ text, yes, onYes, onNo }: { text: string; yes: string; onYes: () => void; onNo: () => void }) {
+  return (
+    <Modal onClose={onNo}>
+      <p className="confirm-text">{text}</p>
+      <div className="row confirm-row">
+        <button className="btn" onClick={onNo}>
+          취소
+        </button>
+        <button className="btn btn-primary" autoFocus onClick={onYes}>
+          {yes}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 /** 화면 아래 대사창. 클릭할 때마다 다음 줄로 넘어간다. */
 export function Dialog({ lines, onDone }: { lines: string[]; onDone: () => void }) {
   const [i, setI] = useState(0)

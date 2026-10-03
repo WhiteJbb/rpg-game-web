@@ -48,6 +48,7 @@ export function WorldMap({ game, onRegion, onTown }: Props) {
           <span className="sign">마을로</span>
         </button>
       </div>
+      <p className="map-hint">← 좌우로 밀어서 둘러보기 →</p>
     </div>
   )
 }
