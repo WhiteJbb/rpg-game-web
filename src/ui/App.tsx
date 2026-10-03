@@ -3,7 +3,9 @@ import { BOSS_CLEAR, ENDING, INTRO } from '../game/data/story'
 import { newGame, reduce } from '../game/engine'
 import { SAVE_KEY, deserialize, serialize } from '../game/save'
 import type { Action, GameState } from '../game/types'
+import { monsterById } from '../game/data/monsters'
 import { Scene } from './art'
+import { setBgm } from './bgm'
 import { Dialog, Hud, MuteButton } from './common'
 import { sfx } from './sfx'
 import { Battle, type BattleOutcome } from './screens/Battle'
@@ -59,6 +61,17 @@ export function App() {
     document.addEventListener('click', onClick)
     return () => document.removeEventListener('click', onClick)
   }, [])
+
+  // 장면별 배경음악. 대사 장면은 엔딩만 따로 두고 나머지는 직전 곡을 이어 간다.
+  const track =
+    screen.n === 'title' || !game ? 'title' :
+    screen.n === 'region' ? screen.id :
+    screen.n === 'battle' ? (monsterById(screen.monsterId).boss ? 'boss' : 'battle') :
+    screen.n === 'story' ? (screen.lines === ENDING ? 'ending' : null) :
+    'town'
+  useEffect(() => {
+    if (track) setBgm(track)
+  }, [track])
 
   const say = (text: string) => setToast({ key: Date.now(), text })
 

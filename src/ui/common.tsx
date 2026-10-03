@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import * as R from '../game/rules'
 import type { Player } from '../game/types'
 import { Art } from './art'
+import { refreshBgm } from './bgm'
 import { isMuted, setMuted, sfx } from './sfx'
 
 export function MuteButton({ className = '' }: { className?: string }) {
@@ -9,6 +10,7 @@ export function MuteButton({ className = '' }: { className?: string }) {
   const toggle = () => {
     setMuted(!muted)
     set(!muted)
+    refreshBgm()
     sfx('click')
   }
   return (
