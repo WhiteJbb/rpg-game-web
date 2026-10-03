@@ -4,7 +4,7 @@ import type { Player, StatKey } from './types'
 export const POINTS_PER_LEVEL = 4
 export const MAX_LEVEL = 50
 export const CRIT_MULT = 1.75
-export const DEFEND_MULT = 0.5
+export const DEFEND_MULT = 0.4
 export const CHARGE_MULT = 2.4
 export const DEATH_GOLD_LOSS = 0.2
 export const SLOT_SYMBOLS = 5 // 0번 심볼이 잭팟(7)

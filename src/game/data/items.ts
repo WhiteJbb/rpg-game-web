@@ -25,7 +25,7 @@ export interface Spell {
 
 export const SPELLS: Spell[] = [
   { id: 'fireball', name: '파이어볼', mp: 8, power: 22, price: 0 },
-  { id: 'wind-cutter', name: '윈드커터', mp: 5, power: 13, price: 200 },
+  { id: 'wind-cutter', name: '윈드커터', mp: 4, power: 16, price: 200 },
   { id: 'ice-spear', name: '아이스스피어', mp: 12, power: 36, price: 450 },
   { id: 'lightning-bolt', name: '라이트닝볼트', mp: 20, power: 65, price: 1400 },
   { id: 'meteor', name: '메테오', mp: 38, power: 130, price: 4500 },

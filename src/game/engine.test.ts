@@ -71,6 +71,14 @@ describe('engine', () => {
     expect(s.player.gold).toBe(0)
     expect(s.player.weapon).toBe('wooden-stick')
     expect(R.totalStat(s.player, 'str')).toBe(8)
+    // 더 나쁜 장비를 사면 착용 중인 장비를 유지한다
+    s.player.gold = 290
+    s = reduce(s, { type: 'buyEquip', equipId: 'bronze-sword' }, seeded(1))
+    s = reduce(s, { type: 'buyEquip', equipId: 'wooden-stick' }, seeded(1))
+    expect(errorOf(s)).toBeTruthy() // 이미 보유
+    s.player.owned = ['bronze-sword']
+    s = reduce(s, { type: 'buyEquip', equipId: 'wooden-stick' }, seeded(1))
+    expect(s.player.weapon).toBe('bronze-sword')
   })
 
   it('스텟 분배는 보유 포인트 안에서만', () => {

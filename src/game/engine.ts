@@ -86,7 +86,8 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
         const gold = Math.round(monsterById(region.monsters[0].id).gold * between(rng, 2, 4) * R.goldBonus(p))
         p.gold += gold
         emit({ t: 'treasure', gold })
-      } else if (roll < 0.12) {
+      } else if (roll < 0.12 && (p.hp < R.maxHp(p) || p.mp < R.maxMp(p))) {
+        // 샘물은 회복할 것이 있을 때만 나온다
         const hp = Math.min(R.maxHp(p) - p.hp, Math.round(R.maxHp(p) * 0.3))
         const mp = Math.min(R.maxMp(p) - p.mp, Math.round(R.maxMp(p) * 0.3))
         p.hp += hp
@@ -126,7 +127,9 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       if (p.owned.includes(eq.id)) return fail('이미 가지고 있습니다')
       if (!spend(eq.price)) return fail('골드가 부족합니다')
       p.owned.push(eq.id)
-      p[eq.slot] = eq.id
+      // 지금 장비보다 좋을 때만 자동 착용
+      const worth = (id: string | null) => (id ? equipById(id).str + equipById(id).def + equipById(id).int : -1)
+      if (worth(eq.id) > worth(p[eq.slot])) p[eq.slot] = eq.id
       clampVitals(p)
       emit({ t: 'bought', id: eq.id })
       return s

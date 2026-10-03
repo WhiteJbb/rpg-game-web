@@ -70,6 +70,7 @@ export function App() {
 
   const afterBattle = (outcome: BattleOutcome, regionId: string) => {
     if (outcome.type === 'defeat') return setScreen({ n: 'town' })
+    if (outcome.type === 'fled') say('무사히 도망쳤다!')
     const cleared = outcome.type === 'victory' ? outcome.victory.bossFirst : null
     if (!cleared) return setScreen({ n: 'region', id: regionId })
     const afterStory: Screen = game!.cleared ? { n: 'story', bg: 'town', lines: ENDING, next: { n: 'town' } } : { n: 'map' }

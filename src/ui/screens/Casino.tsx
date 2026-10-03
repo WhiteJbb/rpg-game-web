@@ -21,8 +21,9 @@ interface Props {
 
 export function Casino({ game, act, onBack }: Props) {
   const gold = game.player.gold
-  const [bet, setBet] = useState(Math.max(1, Math.min(10, gold)))
-  const [reels, setReels] = useState<[number, number, number]>([0, 0, 0])
+  // 입력 중에는 빈 값도 허용하고, 실제 베팅액은 쓸 때 계산한다
+  const [betText, setBetText] = useState(String(Math.max(1, Math.min(10, gold))))
+  const [reels, setReels] = useState<[number, number, number]>([1, 2, 3])
   const [spinning, setSpinning] = useState(false)
   const [message, setMessage] = useState('같은 그림 2개면 본전, 3개면 8배, 왕관 3개면 20배!')
   // 결과는 이미 정해져 있고(상태에 반영됨), 화면에는 릴이 멈춘 뒤에 보여준다
@@ -30,11 +31,18 @@ export function Casino({ game, act, onBack }: Props) {
   const timer = useRef(0)
   useEffect(() => () => clearInterval(timer.current), [])
 
+  const clamp = (n: number) => Math.max(1, Math.min(gold, Math.floor(n) || 1))
+  const bet = clamp(Number(betText))
+  const setBet = (n: number) => setBetText(String(clamp(n)))
+  const busy = useRef(false)
+
   const spin = () => {
-    if (spinning) return
+    if (busy.current) return
     const next = act({ type: 'slot', bet })
     const e = next.events.find((e) => e.t === 'slot')
     if (!e || e.t !== 'slot') return
+    busy.current = true
+    setBetText(String(bet))
     setSpinning(true)
     setShownGold(gold - bet)
     setMessage('두구두구두구...')
@@ -46,13 +54,14 @@ export function Casino({ game, act, onBack }: Props) {
       setReels([ticks > 8 ? e.reels[0] : roll(), ticks > 13 ? e.reels[1] : roll(), ticks > 18 ? e.reels[2] : roll()])
       if (ticks > 18) {
         clearInterval(timer.current)
+        busy.current = false
         setSpinning(false)
         setShownGold(next.player.gold)
         setMessage(
           e.refunded
             ? '꽝... 인 줄 알았는데 동전이 도로 굴러 나왔다! (운)'
             : e.payout > e.bet
-              ? `당첨!! +${e.payout.toLocaleString()} 골드`
+              ? `당첨!! ${e.payout.toLocaleString()} 골드 획득`
               : e.payout === e.bet
                 ? '본전! 한 번 더?'
                 : '꽝... 다음엔 될 것 같은 기분이 든다.',
@@ -61,7 +70,6 @@ export function Casino({ game, act, onBack }: Props) {
     }, 80)
   }
 
-  const clamp = (n: number) => Math.max(1, Math.min(gold, Math.floor(n) || 1))
   return (
     <Scene bg="casino" className="shop-scene">
       <div className="panel shop casino">
@@ -85,7 +93,7 @@ export function Casino({ game, act, onBack }: Props) {
           보유 <Gold amount={spinning ? shownGold : gold} />
         </p>
         <div className="bet">
-          <input type="number" min={1} max={gold} value={bet} disabled={spinning} onChange={(e) => setBet(clamp(Number(e.target.value)))} aria-label="베팅 금액" />
+          <input type="number" inputMode="numeric" min={1} max={gold} value={betText} disabled={spinning} onChange={(e) => setBetText(e.target.value)} onBlur={() => setBet(bet)} aria-label="베팅 금액" />
           {[10, 100].map((n) => (
             <button key={n} className="btn btn-small" disabled={spinning || gold < 1} onClick={() => setBet(clamp(bet + n))}>
               +{n}
@@ -95,7 +103,7 @@ export function Casino({ game, act, onBack }: Props) {
             절반
           </button>
         </div>
-        <button className="btn btn-primary btn-big" disabled={spinning || gold < 1 || bet > gold} onClick={spin}>
+        <button className="btn btn-primary btn-big" disabled={spinning || gold < 1} onClick={spin}>
           돌린다!
         </button>
       </div>
