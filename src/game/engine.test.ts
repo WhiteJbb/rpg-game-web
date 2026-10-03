@@ -140,6 +140,10 @@ describe('engine', () => {
     expect(deserialize(serialize(s))).toEqual(s)
     expect(deserialize('{"version":99}')).toBeNull()
     expect(deserialize('not json')).toBeNull()
+    expect(deserialize('{"version":1,"player":{"name":"t"},"progress":null}')).toBeNull()
+    const stale = JSON.parse(serialize(s))
+    stale.battle = { monsterId: 'removed-monster', regionId: 'meadow', isBoss: false, monsterHp: 5, charging: null }
+    expect(deserialize(JSON.stringify(stale))?.battle).toBeNull()
     expect(deserialize(null)).toBeNull()
   })
 
