@@ -152,9 +152,9 @@ input {
 /* ---------- 마을 ---------- */
 .town-scene { justify-content: flex-end; }
 .town-places {
-  width: min(1100px, 100%);
+  width: min(1240px, 100%);
   display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; align-items: end;
-  margin-bottom: 3vh;
+  margin-bottom: 22vh; /* 건물 밑단이 광장 안쪽(지평선 가까이)에 오도록 */
 }
 .place {
   background: none; border: 0; padding: 0;
@@ -163,7 +163,7 @@ input {
 }
 .place:hover { transform: translateY(-6px) scale(1.04); filter: drop-shadow(0 0 12px #fff8c9); }
 .place:active { transform: scale(0.97); }
-.place-art { width: 100%; max-height: 34vh; aspect-ratio: 1; filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.35)); }
+.place-art { width: 100%; max-height: 40vh; aspect-ratio: 1; filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.35)); }
 .place-art.art-missing { font-size: clamp(2.5rem, 8vw, 5rem); background: rgba(251, 241, 220, 0.7); border-radius: 20px; }
 .place-gate .place-art { transform: scale(1.1); transform-origin: bottom; }
 .sign {
@@ -172,7 +172,7 @@ input {
   display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2;
 }
 @media (max-aspect-ratio: 1/1) {
-  .town-places { grid-template-columns: repeat(3, 1fr); gap: 10px 4px; }
+  .town-places { grid-template-columns: repeat(3, 1fr); gap: 10px 4px; margin-bottom: 6vh; }
   .place-art { max-height: 22vh; }
 }
 
@@ -282,8 +282,8 @@ input {
 @media (max-width: 720px) {
   .battle-row { flex-direction: column; }
   .player-plate { flex: none; }
-  .actions { grid-template-columns: repeat(3, 1fr); }
-  .actions .btn-primary { grid-column: span 3; }
+  .actions { grid-template-columns: repeat(4, 1fr); }
+  .actions .btn-primary { grid-column: span 4; }
   .actions-list { grid-template-columns: repeat(2, 1fr); }
   .enemy-art { max-height: 38vh; }
 }
