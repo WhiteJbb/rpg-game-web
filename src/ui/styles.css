@@ -1,3 +1,357 @@
+:root {
+  --paper: #fbf1dc;
+  --paper-dark: #efdcb8;
+  --ink: #4a3423;
+  --line: #8a6238;
+  --accent: #c8553d;
+  --accent-dark: #9c3c29;
+  --gold: #b9811a;
+  --hp: #d9534f;
+  --mp: #4a8fd9;
+  --exp: #6aa84f;
+  --shadow: 0 4px 0 rgba(74, 52, 35, 0.35), 0 8px 18px rgba(0, 0, 0, 0.25);
+  --title-font: 'Jua', 'Gowun Dodum', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
-body { background: #2b2118; color: #f6ecd9; font-family: system-ui, sans-serif; }
-.boot { height: 100%; display: grid; place-items: center; font-size: 2rem; }
+body {
+  background: #2b2118;
+  color: var(--ink);
+  font-family: 'Gowun Dodum', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+h1, h2, h3, strong, .btn, .sign { font-family: var(--title-font); font-weight: 400; }
+h2 { margin: 0 0 8px; font-size: 1.5rem; }
+h3 { margin: 14px 0 6px; font-size: 1.1rem; border-bottom: 2px dashed var(--paper-dark); padding-bottom: 4px; }
+h3 small { float: right; color: var(--accent); }
+p { margin: 0 0 10px; line-height: 1.5; }
+small { font-size: 0.8em; opacity: 0.8; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+/* ---------- 장면 ---------- */
+.game { height: 100dvh; position: relative; }
+.scene {
+  position: absolute; inset: 0;
+  background: linear-gradient(#9fd3f0, #d9efc2 55%, #8fbf6a) center / cover no-repeat;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 72px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: fade-in 0.35s ease-out;
+}
+.scene[data-bg='wolf-den'] { background-color: #3d4350; background-image: linear-gradient(#2c313c, #565d6b); }
+.scene[data-bg='elf-forest'] { background-image: linear-gradient(#1f5c4a, #7cc79a); }
+.scene[data-bg='vampire-castle'] { background-image: linear-gradient(#2a1830, #6d2f47); }
+.scene[style] { background-size: cover; background-position: center; }
+@keyframes fade-in { from { opacity: 0; } }
+
+.panel {
+  background: var(--paper);
+  border: 3px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+/* ---------- 버튼 ---------- */
+.btn {
+  position: relative;
+  background: var(--paper);
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 0 var(--line);
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+.btn:disabled { opacity: 0.5; }
+.btn:focus-visible, .place:focus-visible, .spot:focus-visible, .dialog:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.btn-primary { background: var(--accent); border-color: var(--accent-dark); color: #fff8ea; box-shadow: 0 4px 0 var(--accent-dark); }
+.btn-primary:active:not(:disabled) { box-shadow: 0 1px 0 var(--accent-dark); }
+.btn-big { font-size: 1.4rem; padding: 14px 32px; }
+.btn-small { font-size: 0.95rem; padding: 6px 12px; min-height: 36px; }
+.btn-danger { color: var(--accent-dark); }
+.btn-hint { animation: pulse 0.8s ease-in-out infinite; border-color: var(--accent); }
+@keyframes pulse { 50% { transform: scale(1.06); } }
+.row { display: flex; gap: 10px; justify-content: flex-end; }
+
+.badge {
+  position: absolute; top: -8px; right: -8px;
+  background: var(--accent); color: #fff; border-radius: 999px;
+  min-width: 22px; height: 22px; font-size: 0.8rem; line-height: 22px; text-align: center;
+}
+
+/* ---------- 이미지 ---------- */
+.art { display: block; object-fit: contain; }
+.art-missing { display: grid; place-items: center; font-size: 2rem; }
+.icon { width: 32px; height: 32px; }
+.icon-inline { display: inline-block; width: 22px; height: 22px; vertical-align: -5px; margin-right: 4px; font-size: 1rem; }
+.icon.art-missing { font-size: 1.3rem; }
+.gold { color: var(--gold); font-family: var(--title-font); white-space: nowrap; }
+.btn-primary .gold { color: #ffe9a8; }
+
+/* ---------- HUD ---------- */
+.hud {
+  position: absolute; z-index: 5; top: 8px; left: 8px; right: 8px;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--paper); border: 3px solid var(--line); border-radius: 14px;
+  padding: 6px 12px; box-shadow: var(--shadow);
+  max-width: 900px; margin: 0 auto;
+}
+.hud-id { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.hud-id strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
+.lv { color: var(--accent); font-size: 0.85em; font-family: var(--title-font); }
+.hud-bars { flex: 1; display: grid; gap: 3px; min-width: 90px; }
+.hud-char { flex-shrink: 0; }
+
+.bar {
+  position: relative; height: 18px; border-radius: 9px;
+  background: #5b4634; border: 2px solid var(--ink); overflow: hidden;
+}
+.bar-fill { height: 100%; transition: width 0.4s ease-out; border-radius: 6px 0 0 6px; }
+.bar-hp .bar-fill, .bar-enemy .bar-fill { background: linear-gradient(#ee7b6d, var(--hp)); }
+.bar-mp .bar-fill { background: linear-gradient(#7db5ee, var(--mp)); }
+.bar-exp .bar-fill { background: linear-gradient(#9fd07f, var(--exp)); }
+.bar-text {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 11px; color: #fff; text-shadow: 0 1px 2px #000; font-family: system-ui, sans-serif; font-weight: 600;
+}
+
+/* ---------- 타이틀 ---------- */
+.title-scene { justify-content: space-between; padding-top: 12vh; padding-bottom: 14vh; }
+.logo {
+  margin: 0; font-size: clamp(3rem, 13vw, 7rem); color: #fff8ea; letter-spacing: 0.04em;
+  text-shadow: 0 4px 0 var(--ink), 0 0 30px rgba(74, 52, 35, 0.6);
+  -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill;
+}
+.logo span { color: #ffd66b; }
+.title-menu { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.name-form { display: grid; gap: 10px; width: min(320px, 90vw); }
+input {
+  font: inherit; color: var(--ink); background: #fff; border: 3px solid var(--line);
+  border-radius: 10px; padding: 8px 12px; width: 100%; user-select: text;
+}
+
+/* ---------- 대사 ---------- */
+.story-scene { justify-content: flex-end; }
+.dialog {
+  width: min(760px, 100%); min-height: 120px; text-align: left; font-size: 1.2rem;
+  position: relative; display: block;
+}
+.dialog-text { margin: 0; animation: fade-in 0.4s; line-height: 1.6; }
+.dialog-next { position: absolute; right: 14px; bottom: 8px; color: var(--accent); animation: bob 0.9s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(4px); } }
+
+/* ---------- 마을 ---------- */
+.town-scene { justify-content: flex-end; }
+.town-places {
+  width: min(1100px, 100%);
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; align-items: end;
+  margin-bottom: 3vh;
+}
+.place {
+  background: none; border: 0; padding: 0;
+  display: flex; flex-direction: column; align-items: center;
+  transition: transform 0.15s, filter 0.15s;
+}
+.place:hover { transform: translateY(-6px) scale(1.04); filter: drop-shadow(0 0 12px #fff8c9); }
+.place:active { transform: scale(0.97); }
+.place-art { width: 100%; max-height: 34vh; aspect-ratio: 1; filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.35)); }
+.place-art.art-missing { font-size: clamp(2.5rem, 8vw, 5rem); background: rgba(251, 241, 220, 0.7); border-radius: 20px; }
+.place-gate .place-art { transform: scale(1.1); transform-origin: bottom; }
+.sign {
+  background: var(--paper); border: 3px solid var(--line); border-radius: 10px;
+  padding: 3px 10px; margin-top: -6px; box-shadow: 0 3px 0 var(--line); white-space: nowrap; font-size: 1rem;
+  display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2;
+}
+@media (max-aspect-ratio: 1/1) {
+  .town-places { grid-template-columns: repeat(3, 1fr); gap: 10px 4px; }
+  .place-art { max-height: 22vh; }
+}
+
+/* ---------- 지도 ---------- */
+.map-scene { background: #3b2c1f; justify-content: center; padding-top: 72px; }
+.map-frame {
+  position: relative; aspect-ratio: 3 / 2;
+  width: min(100%, calc((100dvh - 100px) * 1.5));
+  background: var(--paper-dark) center / cover no-repeat;
+  border: 4px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
+}
+.spot {
+  position: absolute; transform: translate(-50%, -50%);
+  background: none; border: 0; padding: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  transition: transform 0.15s;
+}
+.spot:hover:not(:disabled) { transform: translate(-50%, -50%) scale(1.1); }
+.spot-pin {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #fff8ea; border: 3px solid #fff8ea; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+  font-size: 1.1rem; animation: bob 1.4s ease-in-out infinite;
+}
+.spot-done .spot-pin { background: var(--exp); }
+.spot-town .spot-pin { background: var(--paper); animation: none; }
+.spot-locked { filter: grayscale(1); opacity: 0.75; }
+.spot-locked .spot-pin { background: #666; animation: none; }
+.spot .sign { margin-top: 0; font-size: 0.9rem; }
+@media (max-width: 560px) {
+  .spot .sign { font-size: 0.72rem; padding: 2px 6px; }
+  .spot-pin { width: 32px; height: 32px; font-size: 0.9rem; }
+}
+
+/* ---------- 지역 ---------- */
+.region-scene { justify-content: space-between; }
+.region-head { text-align: center; max-width: 520px; margin-top: 8px; }
+.region-head p { margin: 0; }
+.region-actions { display: flex; flex-direction: column; gap: 12px; align-items: stretch; width: min(420px, 100%); margin-bottom: 4vh; }
+.btn-boss { justify-content: flex-start; text-align: left; background: #f3d9c9; }
+.btn-boss span { display: flex; flex-direction: column; }
+.boss-thumb { width: 48px; height: 48px; flex-shrink: 0; }
+.btn-boss:disabled .boss-thumb { filter: brightness(0); opacity: 0.6; }
+
+/* ---------- 전투 ---------- */
+.battle-scene { justify-content: space-between; padding-top: 12px; }
+.battle-scene.flash::after {
+  content: ''; position: absolute; inset: 0; background: #fff6c4; pointer-events: none; animation: flash 0.35s ease-out forwards;
+}
+@keyframes flash { from { opacity: 0.8; } to { opacity: 0; } }
+.enemy { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.enemy-plate { padding: 6px 14px; min-width: min(300px, 80vw); text-align: center; }
+.enemy-plate .bar { margin-top: 4px; }
+.boss-tag { background: var(--accent); color: #fff; border-radius: 6px; padding: 0 6px; font-size: 0.75rem; vertical-align: 2px; }
+.enemy-body { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; justify-content: center; align-items: flex-end; }
+.enemy-art {
+  height: 100%; max-height: 46vh; max-width: 90vw; aspect-ratio: 1;
+  filter: drop-shadow(0 14px 10px rgba(0, 0, 0, 0.4));
+  animation: idle 2.6s ease-in-out infinite; transform-origin: bottom center;
+}
+.enemy-art.art-missing { font-size: 9rem; }
+@keyframes idle { 50% { transform: scaleY(1.03) translateY(-3px); } }
+.monster-hit .enemy-art { animation: hit 0.45s; }
+@keyframes hit {
+  0%, 100% { transform: translateX(0); filter: drop-shadow(0 14px 10px rgba(0, 0, 0, 0.4)); }
+  15% { transform: translateX(-14px) rotate(-3deg); filter: brightness(2.2) saturate(0.3); }
+  45% { transform: translateX(12px) rotate(3deg); }
+  70% { transform: translateX(-6px); }
+}
+.monster-lunge .enemy-art { animation: lunge 0.5s; }
+@keyframes lunge { 40% { transform: translateY(40px) scale(1.25); } }
+.monster-dead .enemy-art { animation: dead 0.7s forwards; }
+@keyframes dead { to { transform: translateY(30px) scale(0.6) rotate(8deg); opacity: 0; filter: grayscale(1); } }
+.charging .enemy-art { animation: charge 0.35s linear infinite; filter: drop-shadow(0 0 18px #ff4d2e) drop-shadow(0 0 6px #ffd66b); }
+@keyframes charge { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+.pop {
+  position: absolute; left: 50%; top: 30%; pointer-events: none; z-index: 3;
+  font-family: var(--title-font); font-size: 2.6rem; color: #fff;
+  -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink);
+  animation: pop 0.9s ease-out forwards;
+}
+.pop-crit { font-size: 3.6rem; color: #ffd66b; }
+.pop-heal { color: #9ff29a; }
+.pop-miss { color: #cfe6ff; font-size: 2rem; }
+.player-plate .pop { top: -30px; font-size: 2rem; }
+.player-plate .pop-dmg { color: #ff8f80; }
+@keyframes pop {
+  0% { transform: translate(-50%, 10px) scale(0.5); opacity: 0; }
+  20% { transform: translate(-50%, -10px) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -70px) scale(1); opacity: 0; }
+}
+
+.battle-bottom { width: min(900px, 100%); display: flex; flex-direction: column; gap: 8px; }
+.caption {
+  margin: 0 auto; background: rgba(43, 33, 24, 0.82); color: #fff8ea; border-radius: 999px;
+  padding: 6px 18px; font-family: var(--title-font); font-size: 1.05rem; text-align: center; max-width: 100%;
+}
+.battle-row { display: flex; gap: 10px; align-items: stretch; }
+.player-plate { position: relative; flex: 0 0 240px; display: grid; gap: 4px; align-content: center; padding: 10px 12px; }
+.player-plate.shake { animation: shake 0.4s; }
+@keyframes shake { 20% { transform: translateX(-8px); } 50% { transform: translateX(7px); } 80% { transform: translateX(-4px); } }
+.actions { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.actions .btn { padding: 10px 4px; }
+.actions-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.btn-item { font-size: 0.95rem; padding: 6px 10px; justify-content: flex-start; }
+.btn-item small { margin-left: auto; }
+@media (max-width: 720px) {
+  .battle-row { flex-direction: column; }
+  .player-plate { flex: none; }
+  .actions { grid-template-columns: repeat(3, 1fr); }
+  .actions .btn-primary { grid-column: span 3; }
+  .actions-list { grid-template-columns: repeat(2, 1fr); }
+  .enemy-art { max-height: 38vh; }
+}
+
+/* ---------- 모달 ---------- */
+.modal-backdrop {
+  position: absolute; inset: 0; z-index: 20; background: rgba(43, 33, 24, 0.6);
+  display: grid; place-items: center; padding: 16px; animation: fade-in 0.2s;
+}
+.modal { width: min(420px, 100%); max-height: calc(100dvh - 32px); overflow: auto; text-align: center; animation: rise 0.25s ease-out; }
+.modal-wide { width: min(780px, 100%); text-align: left; }
+@keyframes rise { from { transform: translateY(20px) scale(0.96); opacity: 0; } }
+.rewards { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; font-size: 1.15rem; font-family: var(--title-font); }
+.reward-line { font-size: 1.15rem; font-family: var(--title-font); }
+.levelup { color: var(--accent); font-family: var(--title-font); font-size: 1.4rem; animation: pulse 0.8s ease-in-out 3; }
+.levelup small { display: block; color: var(--ink); font-size: 0.9rem; }
+
+/* ---------- 상점 ---------- */
+.shop-scene { justify-content: center; }
+.shop { width: min(640px, 100%); max-height: 100%; display: flex; flex-direction: column; }
+.shop-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.shop-head h2 { margin: 0; }
+.goods { overflow: auto; display: grid; gap: 8px; padding: 2px 2px 6px; }
+.good { display: flex; align-items: center; gap: 12px; background: #fff8ea; border: 2px solid var(--paper-dark); border-radius: 12px; padding: 8px 10px; }
+.good-art { width: 56px; height: 56px; flex-shrink: 0; }
+.good-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.btn-buy { min-width: 96px; padding: 6px 10px; font-size: 1rem; }
+.owned { min-width: 96px; text-align: center; color: var(--exp); font-family: var(--title-font); }
+.inn { text-align: center; gap: 10px; }
+
+.casino { text-align: center; gap: 8px; align-items: center; }
+.casino .shop-head { width: 100%; }
+.reels { display: flex; gap: 10px; justify-content: center; }
+.reel { width: clamp(72px, 22vw, 120px); aspect-ratio: 1; background: #fff; border: 4px solid var(--line); border-radius: 14px; display: grid; place-items: center; box-shadow: inset 0 6px 10px rgba(0, 0, 0, 0.15); }
+.reel-art { width: 80%; height: 80%; }
+.reel-art.art-missing { font-size: clamp(2.2rem, 9vw, 4rem); }
+.spinning .reel-art { animation: reel 0.16s linear infinite; }
+@keyframes reel { from { transform: translateY(-14%); opacity: 0.6; } to { transform: translateY(14%); opacity: 1; } }
+.casino-msg { min-height: 1.5em; font-family: var(--title-font); font-size: 1.1rem; margin: 4px 0 0; }
+.bet { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; }
+.bet input { width: 110px; text-align: right; }
+
+/* ---------- 캐릭터 ---------- */
+.char { display: grid; grid-template-columns: 200px 1fr; gap: 16px; }
+.char-left { display: grid; gap: 8px; align-content: start; }
+.char-art { width: 100%; aspect-ratio: 1; }
+.char-art.art-missing { font-size: 6rem; }
+.char-gear { font-size: 0.9rem; margin: 0; }
+.stats { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.stats li { display: grid; grid-template-columns: 3em 4.2em 1fr 36px; align-items: center; gap: 6px; }
+.stat-name { font-family: var(--title-font); }
+.stat-val em { color: var(--exp); font-style: normal; font-size: 0.85em; }
+.btn-plus { min-height: 32px; height: 32px; width: 36px; padding: 0; font-size: 1.2rem; box-shadow: 0 2px 0 var(--line); }
+.bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: #fff8ea; border: 2px solid var(--paper-dark); border-radius: 10px; padding: 4px 8px; }
+.char-foot { margin-top: 14px; justify-content: space-between; }
+@media (max-width: 620px) {
+  .char { grid-template-columns: 1fr; }
+  .char-art { width: 120px; margin: 0 auto; }
+}
+
+/* ---------- 토스트 ---------- */
+.toast {
+  position: absolute; z-index: 30; left: 50%; bottom: 12vh; transform: translateX(-50%);
+  background: rgba(43, 33, 24, 0.92); color: #fff8ea; border-radius: 999px; padding: 8px 20px;
+  font-family: var(--title-font); animation: rise 0.2s ease-out; pointer-events: none; white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
