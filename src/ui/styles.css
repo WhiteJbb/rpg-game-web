@@ -1,0 +1,3 @@
+html, body, #root { height: 100%; margin: 0; }
+body { background: #2b2118; color: #f6ecd9; font-family: system-ui, sans-serif; }
+.boot { height: 100%; display: grid; place-items: center; font-size: 2rem; }
