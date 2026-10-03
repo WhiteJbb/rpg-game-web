@@ -3,7 +3,7 @@ import { eventById } from '../../game/data/events'
 import { potionById } from '../../game/data/items'
 import { monsterById } from '../../game/data/monsters'
 import { regionById } from '../../game/data/regions'
-import { canChallengeBoss, choiceGoldCost } from '../../game/engine'
+import { canChallengeBoss, canChallengeSecret, choiceGoldCost } from '../../game/engine'
 import type { Action, GameEvent, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
 import { Gold, Modal } from '../common'
@@ -21,7 +21,8 @@ type Result = Extract<GameEvent, { t: 'eventResult' }> & { eventId: string; ambu
 export function Region({ game, regionId, act, onBattle, onBack }: Props) {
   const region = regionById(regionId)
   const progress = game.progress[regionId]
-  const boss = monsterById(region.boss)
+  const boss = monsterById(region.boss, game.cycle)
+  const secret = canChallengeSecret(game, regionId) ? monsterById(region.secretBoss!, game.cycle) : null
   const [result, setResult] = useState<Result | null>(null)
 
   const go = (action: Action) => {
@@ -63,6 +64,15 @@ export function Region({ game, regionId, act, onBattle, onBack }: Props) {
             </small>
           </span>
         </button>
+        {secret && (
+          <button className="btn btn-boss btn-secret" onClick={() => go({ type: 'challengeBoss', regionId, secret: true })}>
+            <Art kind="monsters" id={secret.id} alt="" className={`boss-thumb ${progress.secretDefeated ? '' : 'unknown'}`} fallback="🐉" />
+            <span>
+              {progress.secretDefeated ? `재도전 — ${secret.name}` : '지하에서 무언가 깨어났다...'}
+              <small>권장 Lv.{secret.level + 4}</small>
+            </span>
+          </button>
+        )}
         <button className="btn" onClick={onBack}>
           지도로 돌아가기
         </button>
@@ -74,7 +84,7 @@ export function Region({ game, regionId, act, onBattle, onBack }: Props) {
           <p>{pending.text}</p>
           <div className="choices">
             {pending.choices.map((c, i) => {
-              const gold = choiceGoldCost(regionId, c)
+              const gold = choiceGoldCost(regionId, c, game.cycle)
               const potion = c.cost?.potion
               const unaffordable = game.player.gold < gold || (potion !== undefined && game.player.potions[potion] < 1)
               return (

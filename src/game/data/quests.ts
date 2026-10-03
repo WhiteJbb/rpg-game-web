@@ -14,6 +14,8 @@ export interface Quest {
   desc: string
   /** 이 지역이 열려야 게시판에 나타난다 (null이면 처음부터) */
   regionId: string | null
+  /** 엔딩을 본 뒤에야 게시판에 나타난다 */
+  afterClear?: boolean
   goal: QuestGoal
   reward: { gold: number; points?: number; potion?: PotionId }
 }
@@ -62,6 +64,15 @@ export const QUESTS: Quest[] = [
     regionId: null,
     goal: { kind: 'flawless', count: 3 },
     reward: { gold: 150, points: 2 },
+  },
+  {
+    id: 'secret-boss',
+    title: '고룡 토벌',
+    desc: '뱀파이어의 성 지하에서 깨어난 고룡을 쓰러뜨린다',
+    regionId: 'vampire-castle',
+    afterClear: true,
+    goal: { kind: 'boss', monsterId: 'ancient-dragon' },
+    reward: { gold: 3000, points: 5 },
   },
 ]
 

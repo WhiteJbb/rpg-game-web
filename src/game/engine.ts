@@ -6,6 +6,11 @@ import { REGIONS, regionById } from './data/regions'
 import * as R from './rules'
 import type { Action, Battle, GameEvent, GameState, Player, PotionId, Rng } from './types'
 
+export const BASE_STATS: Player['stats'] = { str: 5, agi: 5, def: 5, int: 5, crit: 0, luck: 0 }
+
+const freshProgress = () => Object.fromEntries(REGIONS.map((r) => [r.id, { kills: 0, bossDefeated: false }]))
+const freshQuests = () => Object.fromEntries(QUESTS.map((q) => [q.id, { progress: 0, claimed: false }]))
+
 export function newGame(name: string): GameState {
   const player: Player = {
     name: name.trim().slice(0, 12) || '모험가',
@@ -14,31 +19,33 @@ export function newGame(name: string): GameState {
     hp: 0,
     mp: 0,
     gold: 50,
-    stats: { str: 5, agi: 5, def: 5, int: 5, crit: 0, luck: 0 },
+    stats: { ...BASE_STATS },
     points: 5,
     potions: { 'hp-s': 3, 'hp-m': 0, 'hp-l': 0, mp: 1 },
     spells: ['fireball'],
     owned: [],
     weapon: null,
     armor: null,
+    upgrades: {},
   }
   player.hp = R.maxHp(player)
   player.mp = R.maxMp(player)
   return {
     version: 1,
+    cycle: 0,
     player,
-    progress: Object.fromEntries(REGIONS.map((r) => [r.id, { kills: 0, bossDefeated: false }])),
+    progress: freshProgress(),
     battle: null,
     pending: null,
-    quests: Object.fromEntries(QUESTS.map((q) => [q.id, { progress: 0, claimed: false }])),
+    quests: freshQuests(),
     record: { wins: 0, defeats: 0 },
     events: [],
     cleared: false,
   }
 }
 
-export const newBattle = (monsterId: string, regionId: string): Battle => {
-  const m = monsterById(monsterId)
+export const newBattle = (monsterId: string, regionId: string, cycle = 0): Battle => {
+  const m = monsterById(monsterId, cycle)
   return { monsterId, regionId, isBoss: m.boss, monsterHp: m.hp, charging: null, burn: null, chill: 0, stunned: false, poison: 0, damaged: false }
 }
 
@@ -50,16 +57,20 @@ export const isRegionOpen = (s: GameState, regionId: string) => {
 export const canChallengeBoss = (s: GameState, regionId: string) =>
   isRegionOpen(s, regionId) && s.progress[regionId].kills >= regionById(regionId).killsForBoss
 
+export const canChallengeSecret = (s: GameState, regionId: string) =>
+  regionById(regionId).secretBoss !== undefined && s.cleared && isRegionOpen(s, regionId)
+
 export const isQuestVisible = (s: GameState, questId: string) => {
-  const regionId = questById(questId).regionId
-  return regionId === null || isRegionOpen(s, regionId)
+  const q = questById(questId)
+  if (q.afterClear && !s.cleared && s.quests[questId].progress === 0) return false
+  return q.regionId === null || isRegionOpen(s, q.regionId)
 }
 
 export const isQuestDone = (s: GameState, questId: string) => s.quests[questId].progress >= questTarget(questById(questId))
 
 /** 사건 선택지의 골드 비용 (지역 기준 골드 × 배수) */
-export const choiceGoldCost = (regionId: string, choice: Choice) =>
-  Math.round(monsterById(regionById(regionId).monsters[0].id).gold * (choice.cost?.gold ?? 0))
+export const choiceGoldCost = (regionId: string, choice: Choice, cycle = 0) =>
+  Math.round(monsterById(regionById(regionId).monsters[0].id, cycle).gold * (choice.cost?.gold ?? 0))
 
 const between = (rng: Rng, lo: number, hi: number) => lo + rng() * (hi - lo)
 
@@ -88,7 +99,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
     return fail('전투 중에는 할 수 없습니다')
 
   const startBattle = (monsterId: string, regionId: string) => {
-    s.battle = newBattle(monsterId, regionId)
+    s.battle = newBattle(monsterId, regionId, s.cycle)
     emit({ t: 'encounter', monsterId })
   }
 
@@ -120,10 +131,10 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const region = regionById(regionId)
       const choice = eventById(eventId).choices[action.index]
       if (!choice) return fail('고를 수 없는 선택지입니다')
-      const base = monsterById(region.monsters[0].id)
+      const base = monsterById(region.monsters[0].id, s.cycle)
       const potionCost = choice.cost?.potion
       if (potionCost && p.potions[potionCost] < 1) return fail(`${potionById(potionCost).name}이 없습니다`)
-      if (!spend(choiceGoldCost(regionId, choice))) return fail('골드가 부족합니다')
+      if (!spend(choiceGoldCost(regionId, choice, s.cycle))) return fail('골드가 부족합니다')
       if (potionCost) p.potions[potionCost]--
 
       const o = pickWeighted(rng, choice.outcomes)
@@ -144,8 +155,14 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
     }
 
     case 'challengeBoss': {
-      if (!canChallengeBoss(s, action.regionId)) return fail('아직 보스에게 도전할 수 없습니다')
-      startBattle(regionById(action.regionId).boss, action.regionId)
+      const region = regionById(action.regionId)
+      if (action.secret) {
+        if (!canChallengeSecret(s, region.id)) return fail('아직 도전할 수 없습니다')
+        startBattle(region.secretBoss!, region.id)
+        return s
+      }
+      if (!canChallengeBoss(s, region.id)) return fail('아직 보스에게 도전할 수 없습니다')
+      startBattle(region.boss, region.id)
       return s
     }
 
@@ -206,6 +223,43 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       return s
     }
 
+    case 'upgradeEquip': {
+      const eq = equipById(action.equipId)
+      if (!p.owned.includes(eq.id)) return fail('가지고 있지 않은 장비입니다')
+      const level = p.upgrades[eq.id] ?? 0
+      if (level >= R.MAX_UPGRADE) return fail('더 강화할 수 없습니다')
+      if (!spend(R.upgradeCost(p, eq))) return fail('골드가 부족합니다')
+      p.upgrades[eq.id] = level + 1
+      emit({ t: 'upgraded', id: eq.id, level: level + 1 })
+      return s
+    }
+
+    case 'respec': {
+      const keys = Object.keys(BASE_STATS) as (keyof typeof BASE_STATS)[]
+      const points = keys.reduce((sum, k) => sum + p.stats[k] - BASE_STATS[k], 0)
+      if (points <= 0) return fail('되돌릴 스텟이 없습니다')
+      const cost = R.respecCost(p)
+      if (!spend(cost)) return fail('골드가 부족합니다')
+      p.stats = { ...BASE_STATS }
+      p.points += points
+      clampVitals(p)
+      emit({ t: 'respec', cost, points })
+      return s
+    }
+
+    case 'newCycle': {
+      if (!s.cleared) return fail('엔딩을 본 뒤에 시작할 수 있습니다')
+      // 레벨·스텟·장비·골드는 그대로, 세계만 처음으로 (몬스터는 더 강해진다)
+      s.cycle++
+      s.progress = freshProgress()
+      s.quests = freshQuests()
+      s.cleared = false
+      p.hp = R.maxHp(p)
+      p.mp = R.maxMp(p)
+      emit({ t: 'newCycle', cycle: s.cycle })
+      return s
+    }
+
     case 'rest': {
       const cost = R.restCost(p)
       if (!spend(cost)) return fail('골드가 부족합니다')
@@ -245,7 +299,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
 
     case 'attack': {
       const b = s.battle!
-      const m = monsterById(b.monsterId)
+      const m = monsterById(b.monsterId, s.cycle)
       const crit = rng() < R.critChance(p)
       const raw = R.attackPower(p) * between(rng, 0.9, 1.1) * (crit ? R.CRIT_MULT : 1)
       const dmg = Math.min(b.monsterHp, R.mitigate(raw, m.def))
@@ -258,7 +312,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
 
     case 'cast': {
       const b = s.battle!
-      const m = monsterById(b.monsterId)
+      const m = monsterById(b.monsterId, s.cycle)
       const spell = spellById(action.spellId)
       if (!p.spells.includes(spell.id)) return fail('배우지 않은 마법입니다')
       if (p.mp < spell.mp) return fail('MP가 부족합니다')
@@ -342,7 +396,7 @@ function gainExp(p: Player, exp: number): number {
 function enemyPhase(s: GameState, rng: Rng, defending: boolean) {
   const b = s.battle!
   const p = s.player
-  const m = monsterById(b.monsterId)
+  const m = monsterById(b.monsterId, s.cycle)
 
   if (b.burn) {
     const dmg = Math.min(b.monsterHp, b.burn.dmg)
@@ -467,20 +521,26 @@ function win(s: GameState, m: Monster, rng: Rng) {
   if (levelUps === 0) p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * 0.15))
 
   let bossFirst: string | null = null
+  let secretFirst = false
   let equipDrop: string | null = null
-  if (m.boss) {
+  if (m.id === region.secretBoss) {
+    secretFirst = !progress.secretDefeated
+    progress.secretDefeated = true
+  } else if (m.boss) {
     if (!progress.bossDefeated) {
       progress.bossDefeated = true
       bossFirst = region.id
       if (region.id === REGIONS[REGIONS.length - 1].id) s.cleared = true
-      const drop = EQUIPS.find((e) => e.dropFrom === m.id)
-      if (drop && !p.owned.includes(drop.id)) {
-        obtainEquip(p, drop.id)
-        equipDrop = drop.id
-      }
     }
   } else {
     progress.kills++
+  }
+  if (bossFirst || secretFirst) {
+    const drop = EQUIPS.find((e) => e.dropFrom === m.id)
+    if (drop && !p.owned.includes(drop.id)) {
+      obtainEquip(p, drop.id)
+      equipDrop = drop.id
+    }
   }
 
   for (const q of QUESTS) {
@@ -492,5 +552,5 @@ function win(s: GameState, m: Monster, rng: Rng) {
 
   s.battle = null
   s.record.wins++
-  s.events.push({ t: 'victory', exp: m.exp, gold, drops, levelUps, bossFirst, equipDrop })
+  s.events.push({ t: 'victory', exp: m.exp, gold, drops, levelUps, bossFirst, equipDrop, secretFirst })
 }

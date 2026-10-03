@@ -24,10 +24,23 @@ export function MuteButton({ className = '' }: { className?: string }) {
 export { josa } from '../game/josa'
 
 /** 장비 보너스를 한 줄로: '힘 +8 · 방어 +3' */
-export const equipBonus = (e: Equip, sep = ' · ') =>
-  [e.str && `힘 +${e.str}`, e.def && `방어 +${e.def}`, e.int && `지력 +${e.int}`, e.agi && `민첩 +${e.agi}`, e.crit && `치명 +${e.crit}`, e.luck && `운 +${e.luck}`]
-    .filter(Boolean)
-    .join(sep)
+export const equipBonus = (p: Player, e: Equip) =>
+  (
+    [
+      ['힘', 'str'],
+      ['방어', 'def'],
+      ['지력', 'int'],
+      ['민첩', 'agi'],
+      ['치명', 'crit'],
+      ['운', 'luck'],
+    ] as const
+  )
+    .filter(([, key]) => e[key])
+    .map(([label, key]) => `${label} +${R.equipStat(p, e, key)}`)
+    .join(' · ')
+
+/** 강화 단계가 붙은 장비 이름: '청동검 +3' */
+export const equipName = (p: Player, e: Equip) => (p.upgrades[e.id] ? `${e.name} +${p.upgrades[e.id]}` : e.name)
 
 export function Bar({ kind, value, max, label }: { kind: 'hp' | 'mp' | 'exp' | 'enemy'; value: number; max: number; label?: string }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100))

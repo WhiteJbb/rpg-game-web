@@ -16,11 +16,14 @@ export interface Player {
   owned: string[]
   weapon: string | null
   armor: string | null
+  /** 장비별 강화 단계 */
+  upgrades: Record<string, number>
 }
 
 export interface RegionProgress {
   kills: number
   bossDefeated: boolean
+  secretDefeated?: boolean
 }
 
 export interface Battle {
@@ -58,6 +61,8 @@ export interface Victory {
   bossFirst: string | null
   /** 보스가 떨어뜨린 전용 장비 */
   equipDrop: string | null
+  /** 숨은 보스를 처음 쓰러뜨렸는가 */
+  secretFirst: boolean
 }
 
 /** 한 번의 액션으로 일어난 일. UI가 순서대로 연출한다. */
@@ -70,6 +75,9 @@ export type GameEvent =
   | { t: 'poisonTick'; dmg: number; playerHp: number }
   | { t: 'monsterStunned' }
   | { t: 'questClaimed'; id: string }
+  | { t: 'respec'; cost: number; points: number }
+  | { t: 'upgraded'; id: string; level: number }
+  | { t: 'newCycle'; cycle: number }
   | { t: 'playerAttack'; dmg: number; crit: boolean; monsterHp: number }
   | { t: 'playerSpell'; spellId: string; dmg: number; monsterHp: number; mp: number }
   | { t: 'playerDefend'; mp: number }
@@ -87,6 +95,8 @@ export type GameEvent =
 
 export interface GameState {
   version: 1
+  /** 회차 (0 = 1회차). 오를수록 몬스터가 강해진다. */
+  cycle: number
   player: Player
   progress: Record<string, RegionProgress>
   battle: Battle | null
@@ -100,7 +110,7 @@ export interface GameState {
 
 export type Action =
   | { type: 'explore'; regionId: string }
-  | { type: 'challengeBoss'; regionId: string }
+  | { type: 'challengeBoss'; regionId: string; secret?: boolean }
   | { type: 'attack' }
   | { type: 'cast'; spellId: string }
   | { type: 'defend' }
@@ -115,3 +125,6 @@ export type Action =
   | { type: 'slot'; bet: number }
   | { type: 'choose'; index: number }
   | { type: 'claimQuest'; questId: string }
+  | { type: 'respec' }
+  | { type: 'upgradeEquip'; equipId: string }
+  | { type: 'newCycle' }
