@@ -75,7 +75,9 @@ src/
 - 프롬프트에 항상 넣는 문구: `hand-painted storybook fantasy illustration, soft watercolor and gouache textures, warm light` + `No text, no UI, no watermark.`
 - **배경과 대상은 따로 만든다.** 배경에는 몬스터를 넣지 않고, 몬스터·캐릭터·아이템은 단색 배경으로 생성한 뒤 배경을 투명하게 제거한다. (기준 이미지는 화풍 참고용이라 슬라임이 배경에 함께 그려져 있다.)
 - 배경은 3:2 가로 구도, 가운데에 대상이 설 자리와 아래쪽에 UI 자리를 비운다.
-- 원본 PNG는 `art/`에 두고, 게임에는 WebP로 줄인 파일을 `src/assets/`에 넣는다.
+- 원본 PNG는 `art/<종류>/`에 두되 용량이 커서 git에는 올리지 않는다(`.gitignore`). `node scripts/build-assets.mjs`로 WebP로 줄여 `src/assets/`에 넣고, 이 WebP만 커밋한다.
+- 프롬프트는 반드시 stdin으로 넘긴다: `echo "<프롬프트>" | codex exec --skip-git-repo-check -s workspace-write -C "$PWD" -i art/style-reference.png -` (`-i`가 뒤따르는 인자를 전부 이미지로 받아들인다).
+- 투명 배경은 프롬프트에 "The background MUST be fully transparent (PNG with alpha channel)"라고 쓰면 실제 알파 채널로 나온다.
 - 생성 결과는 사람이 눈으로 확인한 뒤에 채택한다. 화풍이 어긋난 이미지는 다시 만든다.
 
 ## 명령어

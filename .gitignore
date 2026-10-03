@@ -3,3 +3,6 @@ dist/
 *.log
 .DS_Store
 .playwright-mcp/
+
+# 이미지 원본(PNG)은 용량이 커서 저장소에 올리지 않는다. 게임용 WebP는 src/assets/에 있다.
+art/*/

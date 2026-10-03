@@ -6,11 +6,11 @@ import { artUrl } from '../art'
 
 /** 지도 그림 위 각 장소의 위치(%). 지도 이미지가 바뀌면 여기를 맞춘다. */
 const SPOTS: Record<string, { x: number; y: number }> = {
-  meadow: { x: 22, y: 72 },
-  'wolf-den': { x: 24, y: 26 },
-  'elf-forest': { x: 64, y: 50 },
-  'vampire-castle': { x: 80, y: 22 },
-  town: { x: 50, y: 86 },
+  meadow: { x: 17, y: 80 },
+  'wolf-den': { x: 17, y: 20 },
+  'elf-forest': { x: 66, y: 40 },
+  'vampire-castle': { x: 87, y: 16 },
+  town: { x: 52, y: 78 },
 }
 
 interface Props {
