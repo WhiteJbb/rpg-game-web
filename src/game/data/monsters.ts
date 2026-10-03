@@ -1,4 +1,4 @@
-export type SpecialKind = 'heavy' | 'double' | 'drain' | 'charge'
+export type SpecialKind = 'heavy' | 'double' | 'drain' | 'charge' | 'poison' | 'stun'
 
 export interface Special {
   kind: SpecialKind
@@ -63,7 +63,7 @@ export const MONSTERS: Monster[] = [
   ]),
   // 엘프의 숲
   mk('pixie', '픽시', 12, { hp: 0.7, def: 0.7, res: 1.6 }, [{ kind: 'drain', name: '정기 흡수', chance: 0.3 }]),
-  mk('dark-elf', '다크엘프', 14, { res: 1.3 }, [{ kind: 'heavy', name: '그림자 화살', chance: 0.3 }]),
+  mk('dark-elf', '다크엘프', 14, { res: 1.3 }, [{ kind: 'poison', name: '독화살', chance: 0.3 }]),
   mk('treant', '트렌트', 16, { hp: 1.3, def: 1.7, res: 0.5, atk: 0.9 }, [{ kind: 'heavy', name: '뿌리 내려치기', chance: 0.25 }]),
   mk('elf-queen', '엘프여왕', 18, { boss: true, res: 1.5 }, [
     { kind: 'charge', name: '정령의 심판', chance: 0.3 },
@@ -71,8 +71,8 @@ export const MONSTERS: Monster[] = [
   ]),
   // 뱀파이어의 성
   mk('bat', '흡혈박쥐', 19, { hp: 0.7 }, [{ kind: 'drain', name: '흡혈', chance: 0.35 }]),
-  mk('zombie', '좀비', 21, { hp: 1.4, atk: 0.9, def: 0.8 }, [{ kind: 'heavy', name: '썩은 주먹', chance: 0.25 }]),
-  mk('gargoyle', '가고일', 23, { def: 1.8, res: 0.6 }, [{ kind: 'double', name: '돌날개 강타', chance: 0.3 }]),
+  mk('zombie', '좀비', 21, { hp: 1.4, atk: 0.9, def: 0.8 }, [{ kind: 'poison', name: '썩은 손톱', chance: 0.3 }]),
+  mk('gargoyle', '가고일', 23, { def: 1.8, res: 0.6 }, [{ kind: 'stun', name: '돌날개 강타', chance: 0.25 }]),
   mk('vampire-lord', '뱀파이어 로드', 26, { boss: true }, [
     { kind: 'charge', name: '피의 만찬', chance: 0.3 },
     { kind: 'drain', name: '흡혈', chance: 0.3 },

@@ -2,7 +2,7 @@ import { EQUIPS, POTIONS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
 import { Art } from '../art'
-import { Bar, Modal } from '../common'
+import { Bar, Modal, equipBonus } from '../common'
 
 const pct = (n: number) => `${Math.round(n * 100)}%`
 
@@ -71,7 +71,7 @@ export function Character({ game, act, onClose, onReset }: Props) {
                 <Art kind="items" id={e.id} alt="" className="icon" fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} />
                 {e.name}
                 <small>
-                  {[e.str && `힘+${e.str}`, e.def && `방어+${e.def}`, e.int && `지력+${e.int}`].filter(Boolean).join(' ')} · {p[e.slot] === e.id ? '착용 중' : '착용'}
+                  {equipBonus(e, ' ')} · {p[e.slot] === e.id ? '착용 중' : '착용'}
                 </small>
               </button>
             ))}

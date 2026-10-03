@@ -12,6 +12,7 @@ import { Battle, type BattleOutcome } from './screens/Battle'
 import { Casino } from './screens/Casino'
 import { Character } from './screens/Character'
 import { Region } from './screens/Region'
+import { Quests, claimableQuests } from './screens/Quests'
 import { EquipShop, Inn, MagicShop, PotionShop } from './screens/Shops'
 import { Title } from './screens/Title'
 import { Town, type Place } from './screens/Town'
@@ -38,6 +39,7 @@ export function App() {
   const [game, setGame] = useState<GameState | null>(loadSave)
   const [screen, setScreen] = useState<Screen>({ n: 'title' })
   const [showChar, setShowChar] = useState(false)
+  const [showQuests, setShowQuests] = useState(false)
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null)
 
   useEffect(() => {
@@ -83,8 +85,9 @@ export function App() {
       else if (e.t === 'bought') (say('구매 완료!'), sfx('coin'))
       else if (e.t === 'rest') (say('푹 쉬었다. HP와 MP가 전부 회복되었다!'), sfx('heal'))
       else if (e.t === 'encounter') sfx('encounter')
-      else if (e.t === 'treasure') sfx('coin')
-      else if (e.t === 'spring') sfx('heal')
+      else if (e.t === 'event') sfx('encounter')
+      else if (e.t === 'eventResult') sfx(e.levelUps > 0 ? 'levelup' : e.hp < 0 ? 'hurt' : e.gold > 0 ? 'coin' : e.hp + e.mp > 0 ? 'heal' : 'click')
+      else if (e.t === 'questClaimed') (say('의뢰 완료! 보상을 받았다.'), sfx('victory'))
     }
     return next
   }
@@ -169,7 +172,7 @@ export function App() {
   const inBattle = screen.n === 'battle'
   return (
     <div className="game">
-      {!inBattle && screen.n !== 'story' ? <Hud player={game.player} onCharacter={() => setShowChar(true)} /> : <MuteButton className="mute-float" />}
+      {!inBattle && screen.n !== 'story' ? <Hud player={game.player} onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
       {body}
       {showChar && (
         <Character
@@ -183,6 +186,7 @@ export function App() {
           }}
         />
       )}
+      {showQuests && <Quests game={game} act={act} onClose={() => setShowQuests(false)} />}
       {toast && (
         <div key={toast.key} className="toast" role="status">
           {toast.text}

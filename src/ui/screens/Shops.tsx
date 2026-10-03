@@ -3,7 +3,7 @@ import { EQUIPS, POTIONS, SPELLS } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
-import { Gold } from '../common'
+import { Gold, equipBonus } from '../common'
 
 interface Props {
   game: GameState
@@ -66,7 +66,7 @@ export function MagicShop({ game, act, onBack }: Props) {
   return (
     <Shop bg="shop-magic" title="마법상점" onBack={onBack}>
       {SPELLS.map((sp) => (
-        <Good key={sp.id} id={sp.id} name={sp.name} fallback="✨" desc={`위력 ${sp.power} · MP ${sp.mp}`}>
+        <Good key={sp.id} id={sp.id} name={sp.name} fallback="✨" desc={`위력 ${sp.power} · MP ${sp.mp} · ${sp.desc}`}>
           {p.spells.includes(sp.id) ? <span className="owned">습득함</span> : <BuyButton price={sp.price} gold={p.gold} onClick={() => act({ type: 'buySpell', spellId: sp.id })} />}
         </Good>
       ))}
@@ -74,15 +74,12 @@ export function MagicShop({ game, act, onBack }: Props) {
   )
 }
 
-const bonus = (e: (typeof EQUIPS)[number]) =>
-  [e.str && `힘 +${e.str}`, e.def && `방어 +${e.def}`, e.int && `지력 +${e.int}`].filter(Boolean).join(' · ')
-
 export function EquipShop({ game, act, onBack }: Props) {
   const p = game.player
   return (
     <Shop bg="shop-equip" title="대장간" onBack={onBack}>
-      {EQUIPS.map((e) => (
-        <Good key={e.id} id={e.id} name={e.name} fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} desc={`${e.slot === 'weapon' ? '무기' : '방어구'} · ${bonus(e)}`}>
+      {EQUIPS.filter((e) => !e.dropFrom || p.owned.includes(e.id)).map((e) => (
+        <Good key={e.id} id={e.id} name={e.name} fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} desc={`${e.slot === 'weapon' ? '무기' : '방어구'} · ${equipBonus(e)}`}>
           {p[e.slot] === e.id ? (
             <span className="owned">착용 중</span>
           ) : p.owned.includes(e.id) ? (

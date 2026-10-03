@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { EQUIPS, POTIONS, SPELLS } from './data/items'
 import { monsterById } from './data/monsters'
 import { REGIONS } from './data/regions'
-import { canChallengeBoss, isRegionOpen, newGame, reduce } from './engine'
+import { EVENTS } from './data/events'
+import { QUESTS } from './data/quests'
+import { canChallengeBoss, isQuestDone, isRegionOpen, newBattle, newGame, reduce } from './engine'
 import * as R from './rules'
 import { deserialize, serialize } from './save'
 import type { GameState, PotionId, Rng, StatKey } from './types'
@@ -93,7 +95,7 @@ describe('engine', () => {
   it('전투 중에는 상점/휴식 불가, 전투 밖에서는 공격 불가', () => {
     const s = newGame('t')
     expect(errorOf(reduce(s, { type: 'attack' }, seeded(1)))).toBeTruthy()
-    s.battle = { monsterId: 'slime', regionId: 'meadow', isBoss: false, monsterHp: 10, charging: null }
+    s.battle = { ...newBattle('slime', 'meadow'), monsterHp: 10, charging: null }
     expect(errorOf(reduce(s, { type: 'rest' }, seeded(1)))).toBeTruthy()
     expect(errorOf(reduce(s, { type: 'buyPotion', potionId: 'hp-s' }, seeded(1)))).toBeTruthy()
   })
@@ -102,7 +104,7 @@ describe('engine', () => {
     let s = newGame('t')
     s.player.exp = R.expToNext(1) - 1
     s.player.hp = 10
-    s.battle = { monsterId: 'slime', regionId: 'meadow', isBoss: false, monsterHp: 1, charging: null }
+    s.battle = { ...newBattle('slime', 'meadow'), monsterHp: 1, charging: null }
     s = reduce(s, { type: 'attack' }, seeded(1))
     const v = s.events.find((e) => e.t === 'victory')
     expect(v && v.t === 'victory' && v.levelUps).toBe(1)
@@ -118,7 +120,7 @@ describe('engine', () => {
     s.player.hp = 1
     s.player.gold = 100
     s.player.stats.agi = 0
-    s.battle = { monsterId: 'ogre', regionId: 'meadow', isBoss: true, monsterHp: 9999, charging: '몽둥이 풀스윙' }
+    s.battle = { ...newBattle('ogre', 'meadow'), monsterHp: 9999, charging: '몽둥이 풀스윙' }
     s = reduce(s, { type: 'attack' }, seeded(1))
     expect(s.events.some((e) => e.t === 'defeat')).toBe(true)
     expect(s.battle).toBeNull()
@@ -130,7 +132,7 @@ describe('engine', () => {
   it('방어하면 모은 공격의 피해가 줄어든다', () => {
     const base = newGame('t')
     base.player.stats.agi = 0
-    base.battle = { monsterId: 'ogre', regionId: 'meadow', isBoss: true, monsterHp: 9999, charging: '몽둥이 풀스윙' }
+    base.battle = { ...newBattle('ogre', 'meadow'), monsterHp: 9999, charging: '몽둥이 풀스윙' }
     const hpAfter = (type: 'defend' | 'attack') => reduce(base, { type }, seeded(7)).player.hp
     const lostDefending = base.player.hp - hpAfter('defend')
     expect(lostDefending).toBeGreaterThan(0)
@@ -139,7 +141,7 @@ describe('engine', () => {
 
   it('보스에게서는 도망칠 수 없다', () => {
     const s = newGame('t')
-    s.battle = { monsterId: 'ogre', regionId: 'meadow', isBoss: true, monsterHp: 100, charging: null }
+    s.battle = { ...newBattle('ogre', 'meadow'), monsterHp: 100, charging: null }
     expect(errorOf(reduce(s, { type: 'flee' }, seeded(1)))).toBeTruthy()
   })
 
@@ -153,6 +155,99 @@ describe('engine', () => {
     stale.battle = { monsterId: 'removed-monster', regionId: 'meadow', isBoss: false, monsterHp: 5, charging: null }
     expect(deserialize(JSON.stringify(stale))?.battle).toBeNull()
     expect(deserialize(null)).toBeNull()
+  })
+
+  it('마법마다 고유 효과가 있다: 화상은 매 턴 피해, 기절은 턴을 건너뛴다', () => {
+    const base = newGame('t')
+    base.player.spells = ['fireball', 'meteor', 'lightning-bolt', 'ice-spear']
+    base.player.mp = 999
+    base.player.stats.agi = 0
+    base.battle = { ...newBattle('ogre', 'meadow'), monsterHp: 9999 }
+
+    const burned = reduce(base, { type: 'cast', spellId: 'meteor' }, seeded(3))
+    expect(burned.battle!.burn).not.toBeNull()
+    const tick = reduce(burned, { type: 'defend' }, seeded(3)).events.find((e) => e.t === 'burnTick')
+    expect(tick && tick.t === 'burnTick' && tick.dmg).toBeGreaterThan(0)
+
+    const stunned = structuredClone(base)
+    stunned.battle!.stunned = true
+    const after = reduce(stunned, { type: 'defend' }, seeded(3))
+    expect(after.events.some((e) => e.t === 'monsterStunned')).toBe(true)
+    expect(after.events.some((e) => e.t === 'monsterAttack' || e.t === 'monsterCharge')).toBe(false)
+    expect(after.battle!.stunned).toBe(false)
+
+    expect(reduce(base, { type: 'cast', spellId: 'ice-spear' }, seeded(3)).battle!.chill).toBeGreaterThan(0)
+  })
+
+  it('독은 HP를 깎지만 쓰러뜨리지는 않는다', () => {
+    let s = newGame('t')
+    s.player.hp = 2
+    s.battle = { ...newBattle('slime', 'meadow'), monsterHp: 9999, poison: 3, stunned: true }
+    s = reduce(s, { type: 'defend' }, seeded(1))
+    expect(s.player.hp).toBe(1)
+    expect(s.battle).not.toBeNull()
+  })
+
+  it('사건: 선택 전에는 다른 행동 불가, 비용이 모자라면 거부, 마지막 선택지는 항상 무료', () => {
+    for (const ev of EVENTS) {
+      expect(ev.choices[ev.choices.length - 1].cost).toBeUndefined()
+      const s = newGame('t')
+      s.player.gold = 0
+      s.player.potions['hp-s'] = 0
+      s.pending = { eventId: ev.id, regionId: 'meadow' }
+      expect(errorOf(reduce(s, { type: 'explore', regionId: 'meadow' }, seeded(1)))).toBeTruthy()
+      ev.choices.forEach((c, index) => {
+        const after = reduce(s, { type: 'choose', index }, seeded(index))
+        if (c.cost) expect(errorOf(after)).toBeTruthy()
+        else {
+          expect(after.pending).toBeNull()
+          expect(after.player.hp).toBeGreaterThan(0)
+          expect(after.player.gold).toBeGreaterThanOrEqual(0)
+        }
+      })
+    }
+  })
+
+  it('퀘스트: 처치 수가 쌓이고, 완료해야 한 번만 보상을 받는다', () => {
+    let s = newGame('t')
+    expect(errorOf(reduce(s, { type: 'claimQuest', questId: 'meadow-hunt' }, seeded(1)))).toBeTruthy()
+    expect(errorOf(reduce(s, { type: 'claimQuest', questId: 'wolf-den-hunt' }, seeded(1)))).toBeTruthy() // 아직 안 열린 지역
+    for (let i = 0; i < 6; i++) {
+      s.battle = { ...newBattle('slime', 'meadow'), monsterHp: 1 }
+      s = reduce(s, { type: 'attack' }, seeded(i))
+    }
+    expect(isQuestDone(s, 'meadow-hunt')).toBe(true)
+    expect(s.quests.flawless.progress).toBe(3) // 한 대도 안 맞고 이겼다
+    const gold = s.player.gold
+    s = reduce(s, { type: 'claimQuest', questId: 'meadow-hunt' }, seeded(1))
+    expect(s.player.gold).toBeGreaterThan(gold)
+    expect(errorOf(reduce(s, { type: 'claimQuest', questId: 'meadow-hunt' }, seeded(1)))).toBeTruthy()
+  })
+
+  it('보스를 처음 쓰러뜨리면 전용 장비를 얻는다 (상점에서는 살 수 없다)', () => {
+    let s = newGame('t')
+    s.player.gold = 99999
+    expect(errorOf(reduce(s, { type: 'buyEquip', equipId: 'ogre-club' }, seeded(1)))).toBeTruthy()
+    s.battle = { ...newBattle('ogre', 'meadow'), monsterHp: 1 }
+    s = reduce(s, { type: 'attack' }, seeded(1))
+    const v = s.events.find((e) => e.t === 'victory')
+    expect(v && v.t === 'victory' && v.equipDrop).toBe('ogre-club')
+    expect(s.player.weapon).toBe('ogre-club')
+    expect(s.quests['meadow-boss'].progress).toBe(1)
+  })
+
+  it('옛 세이브(퀘스트·상태이상 필드 없음)도 불러온다', () => {
+    const old = JSON.parse(serialize(newGame('t')))
+    delete old.quests
+    delete old.record
+    delete old.pending
+    old.progress.meadow.bossDefeated = true
+    old.battle = { monsterId: 'slime', regionId: 'meadow', isBoss: false, monsterHp: 5, charging: null }
+    const s = deserialize(JSON.stringify(old))!
+    expect(s.quests['meadow-boss'].progress).toBe(1)
+    expect(s.record).toEqual({ wins: 0, defeats: 0 })
+    expect(s.battle).toMatchObject({ monsterHp: 5, burn: null, poison: 0 })
+    expect(Object.keys(s.quests)).toHaveLength(QUESTS.length)
   })
 
   it('데이터의 id 참조가 모두 유효하다', () => {
@@ -183,6 +278,7 @@ function playThrough(build: Build, seed: number) {
 
   const town = () => {
     const p = () => s.player
+    for (const q of QUESTS) if (!s.quests[q.id].claimed && isQuestDone(s, q.id) && isRegionOpen(s, q.regionId ?? 'meadow')) act({ type: 'claimQuest', questId: q.id })
     // 스텟: 목표 비율에서 가장 모자란 스텟부터
     while (p().points > 0) {
       const total = weights[build].reduce((sum, [k]) => sum + p().stats[k], 0) + 1
@@ -234,6 +330,12 @@ function playThrough(build: Build, seed: number) {
     const boss = monsterById(region.boss)
     if (canChallengeBoss(s, region.id) && s.player.level >= boss.level) act({ type: 'challengeBoss', regionId: region.id })
     else act({ type: 'explore', regionId: region.id })
+    if (s.pending) {
+      // 사건은 일단 첫 선택지를 고르고, 비용이 모자라면 지나간다
+      const last = EVENTS.find((e) => e.id === s.pending!.eventId)!.choices.length - 1
+      act({ type: 'choose', index: 0 })
+      if (s.pending) act({ type: 'choose', index: last })
+    }
     if (s.battle) fight()
   }
   return { cleared: s.cleared, battles, deaths, level: s.player.level }

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import type { Equip } from '../game/data/items'
 import * as R from '../game/rules'
 import type { Player } from '../game/types'
 import { Art } from './art'
@@ -20,12 +21,13 @@ export function MuteButton({ className = '' }: { className?: string }) {
   )
 }
 
-/** 받침 유무에 따라 조사를 고른다: josa('슬라임', '이', '가') → '슬라임이' */
-export function josa(word: string, withFinal: string, withoutFinal: string): string {
-  const code = word.charCodeAt(word.length - 1) - 0xac00
-  const hasFinal = code >= 0 && code <= 11171 ? code % 28 !== 0 : false
-  return word + (hasFinal ? withFinal : withoutFinal)
-}
+export { josa } from '../game/josa'
+
+/** 장비 보너스를 한 줄로: '힘 +8 · 방어 +3' */
+export const equipBonus = (e: Equip, sep = ' · ') =>
+  [e.str && `힘 +${e.str}`, e.def && `방어 +${e.def}`, e.int && `지력 +${e.int}`, e.agi && `민첩 +${e.agi}`, e.crit && `치명 +${e.crit}`, e.luck && `운 +${e.luck}`]
+    .filter(Boolean)
+    .join(sep)
 
 export function Bar({ kind, value, max, label }: { kind: 'hp' | 'mp' | 'exp' | 'enemy'; value: number; max: number; label?: string }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100))
@@ -49,7 +51,7 @@ export function Gold({ amount }: { amount: number }) {
   )
 }
 
-export function Hud({ player, onCharacter }: { player: Player; onCharacter?: () => void }) {
+export function Hud({ player, onCharacter, onQuests, questBadge = 0 }: { player: Player; onCharacter?: () => void; onQuests?: () => void; questBadge?: number }) {
   return (
     <header className="hud">
       <div className="hud-id">
@@ -62,6 +64,11 @@ export function Hud({ player, onCharacter }: { player: Player; onCharacter?: () 
       </div>
       <Gold amount={player.gold} />
       <MuteButton />
+      {onQuests && (
+        <button className="btn btn-small hud-char" onClick={onQuests}>
+          의뢰{questBadge > 0 && <span className="badge">{questBadge}</span>}
+        </button>
+      )}
       {onCharacter && (
         <button className="btn btn-small hud-char" onClick={onCharacter}>
           캐릭터{player.points > 0 && <span className="badge">{player.points}</span>}
