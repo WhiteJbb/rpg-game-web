@@ -111,6 +111,8 @@ button:disabled { cursor: not-allowed; }
 .lv { color: var(--accent); font-size: 0.85em; font-family: var(--title-font); }
 .hud-bars { flex: 1; display: grid; gap: 3px; min-width: 90px; }
 .hud-char { flex-shrink: 0; }
+.mute { flex-shrink: 0; padding: 4px 8px; }
+.mute-float { position: absolute; z-index: 6; top: 8px; right: 8px; }
 
 .bar {
   position: relative; height: 18px; border-radius: 9px;
@@ -224,7 +226,7 @@ input {
 }
 @keyframes flash { from { opacity: 0.8; } to { opacity: 0; } }
 .enemy { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.enemy-plate { padding: 6px 14px; min-width: min(300px, 80vw); text-align: center; }
+.enemy-plate { padding: 6px 14px; min-width: min(300px, 68vw); text-align: center; }
 .enemy-plate .bar { margin-top: 4px; }
 .boss-tag { background: var(--accent); color: #fff; border-radius: 6px; padding: 0 6px; font-size: 0.75rem; vertical-align: 2px; }
 .enemy-body { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; justify-content: center; align-items: flex-end; }

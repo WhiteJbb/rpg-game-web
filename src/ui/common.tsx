@@ -2,6 +2,21 @@ import { useEffect, useState, type ReactNode } from 'react'
 import * as R from '../game/rules'
 import type { Player } from '../game/types'
 import { Art } from './art'
+import { isMuted, setMuted, sfx } from './sfx'
+
+export function MuteButton({ className = '' }: { className?: string }) {
+  const [muted, set] = useState(isMuted)
+  const toggle = () => {
+    setMuted(!muted)
+    set(!muted)
+    sfx('click')
+  }
+  return (
+    <button className={`btn btn-small mute ${className}`} aria-label={muted ? '소리 켜기' : '소리 끄기'} aria-pressed={muted} onClick={toggle}>
+      {muted ? '🔇' : '🔊'}
+    </button>
+  )
+}
 
 /** 받침 유무에 따라 조사를 고른다: josa('슬라임', '이', '가') → '슬라임이' */
 export function josa(word: string, withFinal: string, withoutFinal: string): string {
@@ -44,6 +59,7 @@ export function Hud({ player, onCharacter }: { player: Player; onCharacter?: () 
         <Bar kind="mp" label="MP" value={player.mp} max={R.maxMp(player)} />
       </div>
       <Gold amount={player.gold} />
+      <MuteButton />
       {onCharacter && (
         <button className="btn btn-small hud-char" onClick={onCharacter}>
           캐릭터{player.points > 0 && <span className="badge">{player.points}</span>}

@@ -3,6 +3,7 @@ import { SLOT_SYMBOLS } from '../../game/rules'
 import type { Action, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
 import { Gold } from '../common'
+import { sfx } from '../sfx'
 
 // 0번이 잭팟
 const SYMBOLS = [
@@ -49,6 +50,7 @@ export function Casino({ game, act, onBack }: Props) {
     let ticks = 0
     timer.current = window.setInterval(() => {
       ticks++
+      sfx('tick')
       const roll = () => Math.floor(Math.random() * SLOT_SYMBOLS)
       // 릴이 왼쪽부터 차례로 멈춘다
       setReels([ticks > 8 ? e.reels[0] : roll(), ticks > 13 ? e.reels[1] : roll(), ticks > 18 ? e.reels[2] : roll()])
@@ -57,6 +59,7 @@ export function Casino({ game, act, onBack }: Props) {
         busy.current = false
         setSpinning(false)
         setShownGold(next.player.gold)
+        sfx(e.payout > e.bet ? 'jackpot' : e.payout === e.bet ? 'coin' : 'error')
         setMessage(
           e.refunded
             ? '꽝... 인 줄 알았는데 동전이 도로 굴러 나왔다! (운)'

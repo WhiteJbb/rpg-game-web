@@ -5,6 +5,7 @@ import * as R from '../../game/rules'
 import type { Action, GameEvent, GameState, Victory } from '../../game/types'
 import { Art, Scene } from '../art'
 import { Bar, Gold, Modal, josa } from '../common'
+import { sfx } from '../sfx'
 
 export type BattleOutcome = { type: 'victory'; victory: Victory } | { type: 'defeat' } | { type: 'fled' }
 
@@ -51,6 +52,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   async function play(e: GameEvent) {
     switch (e.t) {
       case 'playerAttack':
+        sfx(e.crit ? 'crit' : 'hit')
         setCaption(e.crit ? '치명타!' : `${p.name}의 공격!`)
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, e.crit ? 'crit' : 'dmg')
@@ -59,24 +61,30 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
       case 'playerSpell':
         setCaption(`${spellById(e.spellId).name}!`)
         setAnim('spell')
+        sfx('spell')
         await sleep(350)
+        sfx('hit')
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, 'crit')
         setShown((s) => ({ ...s, mhp: e.monsterHp, pmp: e.mp }))
         return sleep(650)
       case 'playerDefend':
+        sfx('defend')
         setCaption('몸을 웅크리고 방어 태세를 취했다.')
         setShown((s) => ({ ...s, pmp: s.pmp + e.mp }))
         return sleep(450)
       case 'potion':
         setCaption(`${josa(potionById(e.potionId).name, '을', '를')} 마셨다.`)
+        sfx('heal')
         pop('player', e.hp > 0 ? `+${e.hp}` : `+${e.mp} MP`, 'heal')
         setShown((s) => ({ ...s, php: s.php + e.hp, pmp: s.pmp + e.mp }))
         return sleep(600)
       case 'fleeFail':
+        sfx('error')
         setCaption('도망치지 못했다!')
         return sleep(600)
       case 'monsterCharge':
+        sfx('charge')
         setCharging(e.skill)
         setCaption(`${josa(m.name, '이', '가')} 힘을 모으고 있다... (${e.skill})`)
         return sleep(800)
@@ -85,6 +93,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
         setCaption(e.skill ? `${m.name}의 ${e.skill}!` : `${m.name}의 공격!`)
         setAnim('monster-lunge')
         await sleep(250)
+        sfx(e.dodged ? 'dodge' : 'hurt')
         pop('player', e.dodged ? '회피!' : `${e.dmg}`, e.dodged ? 'miss' : 'dmg')
         setShown((s) => ({ ...s, php: e.playerHp, mhp: e.monsterHp }))
         return sleep(600)
@@ -92,8 +101,10 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
         setAnim('monster-dead')
         setCaption(`${josa(m.name, '을', '를')} 쓰러뜨렸다!`)
         await sleep(700)
+        sfx(e.levelUps > 0 ? 'levelup' : 'victory')
         return setResult(e)
       case 'defeat':
+        sfx('defeat')
         setCaption('눈앞이 캄캄해진다...')
         await sleep(700)
         return setResult(e)
