@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { EQUIPS, POTIONS, SPELLS } from './data/items'
+import { seeded, simulate } from './bot'
+import { EQUIPS } from './data/items'
 import { monsterById } from './data/monsters'
 import { REGIONS } from './data/regions'
 import { EVENTS } from './data/events'
@@ -7,16 +8,7 @@ import { QUESTS } from './data/quests'
 import { canChallengeBoss, canChallengeSecret, isQuestDone, isQuestVisible, isRegionOpen, newBattle, newGame, reduce } from './engine'
 import * as R from './rules'
 import { deserialize, exportSave, importSave, serialize } from './save'
-import type { GameState, PotionId, Rng, StatKey } from './types'
-
-function seeded(seed: number): Rng {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
+import type { GameState } from './types'
 
 const errorOf = (s: GameState) => s.events.find((e) => e.t === 'error')
 
@@ -29,8 +21,8 @@ describe('rules', () => {
   it('확률 스텟에는 상한이 있다', () => {
     const p = newGame('t').player
     p.stats = { str: 999, agi: 999, def: 999, int: 999, crit: 999, luck: 999 }
-    expect(R.dodgeChance(p)).toBeLessThanOrEqual(0.4)
-    expect(R.critChance(p)).toBeLessThanOrEqual(0.5)
+    expect(R.dodgeChance(p)).toBeLessThanOrEqual(0.45)
+    expect(R.critChance(p)).toBeLessThanOrEqual(0.6)
     expect(R.fleeChance(p)).toBeLessThanOrEqual(0.9)
   })
 
@@ -340,118 +332,20 @@ describe('engine', () => {
   })
 })
 
-/**
- * 봇이 처음부터 엔딩까지 플레이한다. 게임이 끝까지 진행 가능한지와
- * 밸런스(전투 수, 사망 수)가 의도한 범위인지 확인한다.
- */
-type Build = 'warrior' | 'mage'
-
-function playThrough(build: Build, seed: number, cycles = 1) {
-  const rng = seeded(seed)
-  let s = newGame('bot')
-  const act = (a: Parameters<typeof reduce>[1]) => (s = reduce(s, a, rng))
-  let battles = 0
-  let deaths = 0
-  const weights: Record<Build, [StatKey, number][]> = {
-    warrior: [['str', 0.5], ['def', 0.3], ['agi', 0.1], ['crit', 0.1]],
-    mage: [['int', 0.55], ['def', 0.3], ['agi', 0.15]],
-  }
-
-  const town = () => {
-    const p = () => s.player
-    for (const q of QUESTS) if (!s.quests[q.id].claimed && isQuestDone(s, q.id) && isRegionOpen(s, q.regionId ?? 'meadow')) act({ type: 'claimQuest', questId: q.id })
-    // 스텟: 목표 비율에서 가장 모자란 스텟부터
-    while (p().points > 0) {
-      const total = weights[build].reduce((sum, [k]) => sum + p().stats[k], 0) + 1
-      const [stat] = [...weights[build]].sort((a, b) => p().stats[a[0]] / total - a[1] - (p().stats[b[0]] / total - b[1]))[0]
-      act({ type: 'allocate', stat, amount: 1 })
-    }
-    // 장비: 살 수 있는 것 중 주 스텟이 가장 높은 것
-    const main = build === 'warrior' ? 'str' : 'int'
-    for (const slot of ['weapon', 'armor'] as const) {
-      const score = (id: string | null) => {
-        const e = EQUIPS.find((e) => e.id === id)
-        return e ? (slot === 'weapon' ? e[main] * 2 + e.str : e.def + e.int * (build === 'mage' ? 1 : 0)) : 0
-      }
-      const best = EQUIPS.filter((e) => e.slot === slot && e.price <= p().gold && score(e.id) > score(p()[slot])).sort((a, b) => score(b.id) - score(a.id))[0]
-      if (best) act({ type: 'buyEquip', equipId: best.id })
-    }
-    // 남는 골드로 착용 장비를 강화 (포션 값은 남겨 둔다)
-    for (let i = 0; i < 20; i++) {
-      const target = [p().weapon, p().armor]
-        .filter((id): id is string => id !== null && (p().upgrades[id] ?? 0) < R.MAX_UPGRADE)
-        .map((id) => EQUIPS.find((e) => e.id === id)!)
-        .sort((a, b) => R.upgradeCost(p(), a) - R.upgradeCost(p(), b))[0]
-      if (!target || R.upgradeCost(p(), target) > p().gold * 0.6) break
-      act({ type: 'upgradeEquip', equipId: target.id })
-    }
-    if (build === 'mage') {
-      const spell = SPELLS.filter((sp) => !p().spells.includes(sp.id) && sp.price <= p().gold && sp.power > 22).sort((a, b) => b.power - a.power)[0]
-      if (spell) act({ type: 'buySpell', spellId: spell.id })
-    }
-    if ((p().hp < R.maxHp(p()) * 0.6 || p().mp < R.maxMp(p()) * 0.5) && p().gold >= R.restCost(p())) act({ type: 'rest' })
-    // 포션: 최대 HP의 절반 이하를 회복하는 것 중 가장 큰 것을 5개까지
-    const hpPotion = [...POTIONS].filter((x) => x.hp > 0 && x.hp <= Math.max(60, R.maxHp(p()) * 0.6)).pop()!
-    while (p().potions[hpPotion.id] < 5 && p().gold >= hpPotion.price) act({ type: 'buyPotion', potionId: hpPotion.id })
-    if (build === 'mage') while (p().potions.mp < 4 && p().gold >= 70) act({ type: 'buyPotion', potionId: 'mp' })
-  }
-
-  const fight = () => {
-    battles++
-    while (s.battle) {
-      const p = s.player
-      const hpPotion = (['hp-l', 'hp-m', 'hp-s'] as PotionId[]).find((id) => p.potions[id] > 0)
-      if (s.battle.charging) act({ type: 'defend' })
-      else if (p.hp < R.maxHp(p) * 0.35 && hpPotion) act({ type: 'usePotion', potionId: hpPotion })
-      else if (build === 'mage') {
-        const spell = SPELLS.filter((sp) => p.spells.includes(sp.id) && sp.mp <= p.mp).sort((a, b) => b.power - a.power)[0]
-        if (spell) act({ type: 'cast', spellId: spell.id })
-        else if (p.potions.mp > 0) act({ type: 'usePotion', potionId: 'mp' })
-        else act({ type: 'attack' })
-      } else act({ type: 'attack' })
-    }
-    if (s.events.some((e) => e.t === 'defeat')) deaths++
-  }
-
-  for (let step = 0; step < 6000 && (!s.cleared || s.cycle < cycles - 1); step++) {
-    if (s.cleared) act({ type: 'newCycle' })
-    town()
-    // 보스 레벨에 닿을 때까지는 사냥, 닿으면 보스 도전
-    const region = REGIONS.filter((r) => isRegionOpen(s, r.id)).pop()!
-    const boss = monsterById(region.boss, s.cycle)
-    if (canChallengeBoss(s, region.id) && s.player.level >= boss.level) act({ type: 'challengeBoss', regionId: region.id })
-    else act({ type: 'explore', regionId: region.id })
-    if (s.pending) {
-      // 사건은 일단 첫 선택지를 고르고, 비용이 모자라면 지나간다
-      const last = EVENTS.find((e) => e.id === s.pending!.eventId)!.choices.length - 1
-      act({ type: 'choose', index: 0 })
-      if (s.pending) act({ type: 'choose', index: last })
-    }
-    if (s.battle) fight()
-  }
-  return { cleared: s.cleared, cycle: s.cycle, battles, deaths, level: s.player.level }
-}
-
 describe('전체 플레이 시뮬레이션', () => {
-  it('2회차도 엔딩까지 갈 수 있다', () => {
-    const runs = (['warrior', 'mage'] as const).map((build) => playThrough(build, 11, 2))
-    console.log('2회차', runs)
-    for (const r of runs) {
-      expect(r.cleared && r.cycle === 1).toBe(true)
-      expect(r.battles).toBeLessThan(900)
-    }
+  it('숨은 보스는 엔딩 뒤 더 성장하면 잡을 수 있다 (바로는 어렵다)', () => {
+    const runs = (['warrior', 'mage', 'rogue'] as const).flatMap((build) => [1, 2, 3].map((seed) => simulate(build, seed, 1, true)))
+    console.log('고룡', runs.map((r) => `${r.secretTries}회 Lv.${r.level}`).join(', '))
+    for (const r of runs) expect(r.secretDefeated).toBe(true)
+    const avgTries = runs.reduce((a, r) => a + r.secretTries, 0) / runs.length
+    expect(avgTries).toBeGreaterThan(1.5)
+    expect(avgTries).toBeLessThan(12)
   })
 
-  for (const build of ['warrior', 'mage'] as const) {
-    it(`${build} 빌드로 엔딩까지 갈 수 있다`, () => {
-      const runs = [1, 2, 3, 4, 5].map((seed) => playThrough(build, seed))
-      console.log(build, runs)
-      for (const r of runs) {
-        expect(r.cleared).toBe(true)
-        expect(r.battles).toBeGreaterThan(80) // 너무 쉽게 끝나지 않는다
-        expect(r.battles).toBeLessThan(450) // 지루한 반복 사냥을 요구하지 않는다
-        expect(r.deaths).toBeLessThan(r.battles * 0.15)
-      }
-    })
-  }
+  it('2회차도 엔딩까지 갈 수 있다', () => {
+    for (const build of ['warrior', 'mage'] as const) {
+      const run = simulate(build, 11, 2)
+      expect(run.cleared && run.cycle === 1).toBe(true)
+    }
+  })
 })

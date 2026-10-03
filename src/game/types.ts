@@ -16,6 +16,7 @@ export interface Player {
   owned: string[]
   weapon: string | null
   armor: string | null
+  accessory: string | null
   /** 장비별 강화 단계 */
   upgrades: Record<string, number>
 }

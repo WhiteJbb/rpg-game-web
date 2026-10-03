@@ -39,6 +39,8 @@ export const equipBonus = (p: Player, e: Equip) =>
     .map(([label, key]) => `${label} +${R.equipStat(p, e, key)}`)
     .join(' · ')
 
+export const SLOT_ICON = { weapon: '🗡️', armor: '🛡️', accessory: '💍' } as const
+
 /** 강화 단계가 붙은 장비 이름: '청동검 +3' */
 export const equipName = (p: Player, e: Equip) => (p.upgrades[e.id] ? `${e.name} +${p.upgrades[e.id]}` : e.name)
 
@@ -101,12 +103,16 @@ export function Modal({ title, onClose, children, wide }: { title?: string; onCl
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className={`panel modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        {onClose && (
-          <button className="btn modal-close" aria-label="닫기" onClick={onClose}>
-            ✕
-          </button>
+        {(title || onClose) && (
+          <div className="modal-head">
+            <h2>{title}</h2>
+            {onClose && (
+              <button className="btn modal-close" aria-label="닫기" onClick={onClose}>
+                ✕
+              </button>
+            )}
+          </div>
         )}
-        {title && <h2>{title}</h2>}
         {children}
       </div>
     </div>

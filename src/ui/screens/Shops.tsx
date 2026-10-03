@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
-import { EQUIPS, POTIONS, SPELLS } from '../../game/data/items'
+import { useState, type ReactNode } from 'react'
+import { EQUIPS, POTIONS, SLOTS, SPELLS, type Equip } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
-import { Gold, equipBonus, equipName } from '../common'
+import { Gold, SLOT_ICON, equipBonus, equipName } from '../common'
 
 interface Props {
   game: GameState
@@ -76,10 +76,20 @@ export function MagicShop({ game, act, onBack }: Props) {
 
 export function EquipShop({ game, act, onBack }: Props) {
   const p = game.player
+  const [slot, setSlot] = useState<Equip['slot']>('weapon')
+  // 보스 전용 장비는 얻은 뒤에만 목록에 나온다
+  const list = EQUIPS.filter((e) => e.slot === slot && (!e.dropFrom || p.owned.includes(e.id)))
   return (
     <Shop bg="shop-equip" title="대장간" onBack={onBack}>
-      {EQUIPS.filter((e) => !e.dropFrom || p.owned.includes(e.id)).map((e) => (
-        <Good key={e.id} id={e.id} name={equipName(p, e)} fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} desc={`${e.slot === 'weapon' ? '무기' : '방어구'} · ${equipBonus(p, e)}${p[e.slot] === e.id ? ' · 착용 중' : ''}`}>
+      <div className="tabs" role="tablist">
+        {SLOTS.map((s) => (
+          <button key={s.id} role="tab" aria-selected={slot === s.id} className={`btn btn-small ${slot === s.id ? 'btn-primary' : ''}`} onClick={() => setSlot(s.id)}>
+            {s.name}
+          </button>
+        ))}
+      </div>
+      {list.map((e) => (
+        <Good key={e.id} id={e.id} name={equipName(p, e)} fallback={SLOT_ICON[e.slot]} desc={`${equipBonus(p, e)}${p[e.slot] === e.id ? ' · 착용 중' : ''}`}>
           {p.owned.includes(e.id) ? (
             <div className="good-actions">
               {p[e.slot] !== e.id && (

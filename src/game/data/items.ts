@@ -29,17 +29,17 @@ export interface Spell {
 }
 
 export const SPELLS: Spell[] = [
-  { id: 'fireball', name: '파이어볼', mp: 8, power: 22, price: 0, effect: 'burn', chance: 0.35, desc: '가끔 화상' },
-  { id: 'wind-cutter', name: '윈드커터', mp: 4, power: 16, price: 200, effect: 'pierce', chance: 1, desc: '마법 저항 관통' },
-  { id: 'ice-spear', name: '아이스스피어', mp: 12, power: 36, price: 450, effect: 'chill', chance: 1, desc: '적 공격 약화' },
-  { id: 'lightning-bolt', name: '라이트닝볼트', mp: 20, power: 65, price: 1400, effect: 'stun', chance: 0.35, desc: '가끔 기절' },
-  { id: 'meteor', name: '메테오', mp: 38, power: 130, price: 4500, effect: 'burn', chance: 1, desc: '반드시 화상' },
+  { id: 'fireball', name: '파이어볼', mp: 8, power: 28, price: 0, effect: 'burn', chance: 0.35, desc: '가끔 화상' },
+  { id: 'wind-cutter', name: '윈드커터', mp: 4, power: 19, price: 200, effect: 'pierce', chance: 1, desc: '마법 저항 관통' },
+  { id: 'ice-spear', name: '아이스스피어', mp: 12, power: 44, price: 450, effect: 'chill', chance: 1, desc: '적 공격 약화' },
+  { id: 'lightning-bolt', name: '라이트닝볼트', mp: 20, power: 58, price: 1400, effect: 'stun', chance: 0.35, desc: '가끔 기절' },
+  { id: 'meteor', name: '메테오', mp: 38, power: 90, price: 4500, effect: 'burn', chance: 1, desc: '반드시 화상' },
 ]
 
 export interface Equip {
   id: string
   name: string
-  slot: 'weapon' | 'armor'
+  slot: 'weapon' | 'armor' | 'accessory'
   str: number
   def: number
   int: number
@@ -52,22 +52,46 @@ export interface Equip {
 }
 
 export const EQUIPS: Equip[] = [
+  // 무기 — 힘 위주, 치명 위주, 지력 위주로 갈린다
   { id: 'wooden-stick', name: '나무막대기', slot: 'weapon', str: 3, def: 0, int: 0, price: 40 },
+  { id: 'apprentice-wand', name: '견습생의 완드', slot: 'weapon', str: 0, def: 0, int: 8, price: 220 },
   { id: 'bronze-sword', name: '청동검', slot: 'weapon', str: 8, def: 0, int: 0, price: 250 },
+  { id: 'hunting-dagger', name: '사냥용 단검', slot: 'weapon', str: 5, def: 0, int: 0, agi: 4, crit: 6, price: 380 },
   { id: 'steel-sword', name: '강철검', slot: 'weapon', str: 16, def: 0, int: 2, price: 900 },
+  { id: 'battle-axe', name: '전투도끼', slot: 'weapon', str: 23, def: 0, int: 0, price: 1600 },
   { id: 'magic-staff', name: '마법지팡이', slot: 'weapon', str: 4, def: 0, int: 16, price: 1800 },
+  { id: 'assassin-blade', name: '암살자의 칼날', slot: 'weapon', str: 18, def: 0, int: 0, agi: 6, crit: 12, price: 2800 },
   { id: 'mithril-sword', name: '미스릴소드', slot: 'weapon', str: 30, def: 0, int: 5, price: 3000 },
+  { id: 'archmage-staff', name: '대마법사의 지팡이', slot: 'weapon', str: 6, def: 0, int: 30, price: 3600 },
+  { id: 'ogre-club', name: '오우거의 몽둥이', slot: 'weapon', str: 13, def: 0, int: 0, price: 0, dropFrom: 'ogre' },
+  { id: 'vampire-sword', name: '흡혈귀의 검', slot: 'weapon', str: 38, def: 0, int: 8, crit: 10, price: 0, dropFrom: 'vampire-lord' },
+  // 방어구
   { id: 'cloth', name: '천옷', slot: 'armor', str: 0, def: 3, int: 0, price: 40 },
   { id: 'leather-armor', name: '가죽갑옷', slot: 'armor', str: 0, def: 8, int: 0, price: 250 },
-  { id: 'plate-armor', name: '판금갑옷', slot: 'armor', str: 0, def: 18, int: 0, price: 1000 },
+  { id: 'scout-cloak', name: '정찰병의 망토', slot: 'armor', str: 0, def: 6, int: 0, agi: 6, price: 400 },
+  { id: 'chainmail', name: '사슬갑옷', slot: 'armor', str: 0, def: 13, int: 0, price: 650 },
+  { id: 'plate-armor', name: '판금갑옷', slot: 'armor', str: 0, def: 20, int: 0, price: 1300 },
   { id: 'magic-robe', name: '마법로브', slot: 'armor', str: 0, def: 10, int: 12, price: 2000 },
   { id: 'mithril-armor', name: '미스릴갑옷', slot: 'armor', str: 0, def: 34, int: 3, price: 3500 },
-  { id: 'ogre-club', name: '오우거의 몽둥이', slot: 'weapon', str: 13, def: 0, int: 0, price: 0, dropFrom: 'ogre' },
+  { id: 'archmage-robe', name: '대마법사의 로브', slot: 'armor', str: 0, def: 18, int: 24, price: 3800 },
   { id: 'wolf-pelt', name: '늑대왕의 가죽', slot: 'armor', str: 0, def: 13, int: 0, agi: 8, price: 0, dropFrom: 'werewolf' },
   { id: 'spirit-robe', name: '정령의 로브', slot: 'armor', str: 0, def: 22, int: 16, price: 0, dropFrom: 'elf-queen' },
   { id: 'dragon-scale', name: '고룡의 비늘갑옷', slot: 'armor', str: 0, def: 46, int: 6, agi: 6, price: 0, dropFrom: 'ancient-dragon' },
-  { id: 'vampire-sword', name: '흡혈귀의 검', slot: 'weapon', str: 38, def: 0, int: 8, crit: 10, price: 0, dropFrom: 'vampire-lord' },
+  // 장신구 — 주 스텟이 아닌 민첩·치명·운을 채우는 자리
+  { id: 'lucky-coin', name: '행운의 동전', slot: 'accessory', str: 0, def: 0, int: 0, luck: 8, price: 200 },
+  { id: 'copper-ring', name: '구리 반지', slot: 'accessory', str: 3, def: 3, int: 0, price: 300 },
+  { id: 'swift-boots', name: '바람의 장화', slot: 'accessory', str: 0, def: 0, int: 0, agi: 10, price: 700 },
+  { id: 'hawk-pendant', name: '매의 눈 목걸이', slot: 'accessory', str: 0, def: 0, int: 0, crit: 12, price: 1000 },
+  { id: 'sage-amulet', name: '현자의 부적', slot: 'accessory', str: 0, def: 0, int: 12, price: 1600 },
+  { id: 'guardian-ring', name: '수호의 반지', slot: 'accessory', str: 6, def: 12, int: 0, price: 2200 },
+  { id: 'clover-charm', name: '네잎클로버 부적', slot: 'accessory', str: 0, def: 0, int: 0, crit: 5, luck: 20, price: 2500 },
 ]
+
+export const SLOTS = [
+  { id: 'weapon', name: '무기' },
+  { id: 'armor', name: '방어구' },
+  { id: 'accessory', name: '장신구' },
+] as const
 
 export const equipWorth = (e: Equip) => e.str + e.def + e.int + (e.agi ?? 0) + (e.crit ?? 0) + (e.luck ?? 0)
 

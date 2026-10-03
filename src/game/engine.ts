@@ -26,6 +26,7 @@ export function newGame(name: string): GameState {
     owned: [],
     weapon: null,
     armor: null,
+    accessory: null,
     upgrades: {},
   }
   player.hp = R.maxHp(player)
@@ -319,7 +320,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       p.mp -= spell.mp
       const raw = R.spellPower(p, spell.power) * between(rng, 0.9, 1.1)
       const res = spell.effect === 'pierce' ? m.res * R.PIERCE_RES : m.res
-      const dmg = Math.min(b.monsterHp, R.mitigate(raw, res))
+      const dmg = Math.min(b.monsterHp, R.resist(raw, res))
       b.monsterHp -= dmg
       emit({ t: 'playerSpell', spellId: spell.id, dmg, monsterHp: b.monsterHp, mp: p.mp })
       if (b.monsterHp <= 0) {
@@ -518,7 +519,7 @@ function win(s: GameState, m: Monster, rng: Rng) {
   }
 
   const levelUps = gainExp(p, m.exp)
-  if (levelUps === 0) p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * 0.15))
+  if (levelUps === 0) p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * R.WIN_MP_REGEN))
 
   let bossFirst: string | null = null
   let secretFirst = false
