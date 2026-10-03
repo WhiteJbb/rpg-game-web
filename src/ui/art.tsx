@@ -5,6 +5,16 @@ export type ArtKind = 'backgrounds' | 'monsters' | 'buildings' | 'characters' | 
 // 파일명 = 데이터 id. 이미지가 아직 없으면 플레이스홀더로 대체된다.
 const files = import.meta.glob('../assets/**/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
+/** 종류별 전체 이미지 목록 (디버그 갤러리용) */
+export function allArt(): [string, { id: string; url: string }[]][] {
+  const groups = new Map<string, { id: string; url: string }[]>()
+  for (const [path, url] of Object.entries(files)) {
+    const [, kind, id] = path.match(/assets\/([^/]+)\/(.+)\.webp$/)!
+    groups.set(kind, [...(groups.get(kind) ?? []), { id, url }])
+  }
+  return [...groups]
+}
+
 export const artUrl = (kind: ArtKind, id: string): string | undefined => files[`../assets/${kind}/${id}.webp`]
 
 interface ArtProps {
