@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { EQUIPS, POTIONS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
 import { Art } from '../art'
-import { Bar, Modal, equipBonus } from '../common'
+import { Bar, Confirm, Modal, equipBonus } from '../common'
 
 const pct = (n: number) => `${Math.round(n * 100)}%`
 
@@ -25,6 +26,8 @@ interface Props {
 export function Character({ game, act, onClose, onReset }: Props) {
   const p = game.player
   const owned = EQUIPS.filter((e) => p.owned.includes(e.id))
+  const [resetting, setResetting] = useState(false)
+  if (resetting) return <Confirm text="정말 모든 진행을 지우고 처음으로 돌아갈까요?" yes="전부 지운다" onYes={onReset} onNo={() => setResetting(false)} />
   return (
     <Modal title={`${p.name} · Lv.${p.level}`} onClose={onClose} wide>
       <div className="char">
@@ -89,7 +92,7 @@ export function Character({ game, act, onClose, onReset }: Props) {
         </div>
       </div>
       <div className="row char-foot">
-        <button className="btn btn-small btn-danger" onClick={() => confirm('정말 모든 진행을 지우고 처음으로 돌아갈까요?') && onReset()}>
+        <button className="btn btn-small btn-danger" onClick={() => setResetting(true)}>
           처음부터 다시
         </button>
         <button className="btn btn-primary" onClick={onClose}>

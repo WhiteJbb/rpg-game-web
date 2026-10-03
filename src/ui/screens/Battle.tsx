@@ -3,7 +3,7 @@ import { POTIONS, SPELLS, equipById, potionById, spellById } from '../../game/da
 import { monsterById } from '../../game/data/monsters'
 import * as R from '../../game/rules'
 import type { Action, GameEvent, GameState, StatusKind, Victory } from '../../game/types'
-import { Art, Scene } from '../art'
+import { Art, Scene, artUrl } from '../art'
 import { Bar, Gold, Modal, josa } from '../common'
 import { sfx } from '../sfx'
 
@@ -36,6 +36,8 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   const [busy, setBusy] = useState(false)
   const [fx, setFx] = useState<Fx | null>(null)
   const [anim, setAnim] = useState<'' | 'monster-hit' | 'monster-lunge' | 'monster-dead' | 'spell'>('')
+  const [heroAnim, setHeroAnim] = useState<'' | 'hero-attack' | 'hero-cast' | 'hero-hurt'>('')
+  const [spellFx, setSpellFx] = useState<{ key: number; id: string } | null>(null)
   const [caption, setCaption] = useState(
     game.battle?.charging ? `${josa(m.name, '이', '가')} 힘을 모으고 있다... (${game.battle.charging})` : `${josa(m.name, '이', '가')} 나타났다!`,
   )
@@ -55,6 +57,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
     switch (e.t) {
       case 'playerAttack':
         sfx(e.crit ? 'crit' : 'hit')
+        setHeroAnim('hero-attack')
         setCaption(e.crit ? '치명타!' : `${p.name}의 공격!`)
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, e.crit ? 'crit' : 'dmg')
@@ -63,6 +66,8 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
       case 'playerSpell':
         setCaption(`${spellById(e.spellId).name}!`)
         setAnim('spell')
+        setHeroAnim('hero-cast')
+        setSpellFx({ key: ++fxKey.current, id: e.spellId })
         sfx('spell')
         await sleep(350)
         sfx('hit')
@@ -122,6 +127,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
         setAnim('monster-lunge')
         await sleep(250)
         sfx(e.dodged ? 'dodge' : 'hurt')
+        if (!e.dodged) setHeroAnim('hero-hurt')
         pop('player', e.dodged ? '회피!' : `${e.dmg}`, e.dodged ? 'miss' : 'dmg')
         setShown((s) => ({ ...s, php: e.playerHp, mhp: e.monsterHp }))
         return sleep(600)
@@ -149,6 +155,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
       if (!alive.current) return
       if (e.t === 'fled') return onExit({ type: 'fled' })
       setAnim('')
+      setHeroAnim('')
       await play(e)
     }
     if (alive.current) setBusy(false)
@@ -174,12 +181,14 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
         </div>
         <div className={`enemy-body ${anim} ${charging ? 'charging' : ''}`}>
           <Art kind="monsters" id={m.id} alt={m.name} className="enemy-art" fallback="👾" />
+          {spellFx && <Art key={spellFx.key} kind="items" id={spellFx.id} alt="" className={`spell-fx spell-fx-${spellFx.id}`} fallback="✨" />}
           {fx?.target === 'monster' && (
             <span key={fx.key} className={`pop pop-${fx.kind}`}>
               {fx.text}
             </span>
           )}
         </div>
+        {artUrl('characters', 'hero-back') && <Art kind="characters" id="hero-back" alt="" className={`hero ${heroAnim}`} />}
       </div>
 
       <div className="battle-bottom">
