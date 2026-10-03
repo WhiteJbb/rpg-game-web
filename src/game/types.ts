@@ -17,6 +17,8 @@ export interface Player {
   weapon: string | null
   armor: string | null
   accessory: string | null
+  /** 전직한 직업 (없으면 null) */
+  job: 'warrior' | 'mage' | 'rogue' | null
   /** 장비별 강화 단계 */
   upgrades: Record<string, number>
 }
@@ -40,13 +42,17 @@ export interface Battle {
   chill: number
   /** 몬스터 기절: 다음 턴을 쉰다 */
   stunned: boolean
+  /** 도적의 독: 몬스터가 매 턴 피해 */
+  venom: { turns: number; dmg: number } | null
+  /** 마법사의 명상: 다음 마법이 강해진다 */
+  focus: boolean
   /** 플레이어 중독: 남은 턴 */
   poison: number
   /** 이번 전투에서 피해를 입었는가 (무피해 퀘스트용) */
   damaged: boolean
 }
 
-export type StatusKind = 'burn' | 'chill' | 'stun' | 'poison'
+export type StatusKind = 'burn' | 'chill' | 'stun' | 'poison' | 'venom'
 
 export interface QuestState {
   progress: number
@@ -73,6 +79,9 @@ export type GameEvent =
   | { t: 'eventResult'; text: string; gold: number; hp: number; mp: number; exp: number; potion: PotionId | null; levelUps: number }
   | { t: 'status'; target: 'monster' | 'player'; kind: StatusKind }
   | { t: 'burnTick'; dmg: number; monsterHp: number }
+  | { t: 'venomTick'; dmg: number; monsterHp: number }
+  | { t: 'skill'; job: 'warrior' | 'mage' | 'rogue'; dmg: number; monsterHp: number; mp: number }
+  | { t: 'jobChanged'; job: 'warrior' | 'mage' | 'rogue'; cost: number }
   | { t: 'poisonTick'; dmg: number; playerHp: number }
   | { t: 'monsterStunned' }
   | { t: 'questClaimed'; id: string }
@@ -115,6 +124,7 @@ export type Action =
   | { type: 'attack' }
   | { type: 'cast'; spellId: string }
   | { type: 'defend' }
+  | { type: 'skill' }
   | { type: 'usePotion'; potionId: PotionId }
   | { type: 'flee' }
   | { type: 'buyPotion'; potionId: PotionId }
@@ -127,5 +137,6 @@ export type Action =
   | { type: 'choose'; index: number }
   | { type: 'claimQuest'; questId: string }
   | { type: 'respec' }
+  | { type: 'changeJob'; job: 'warrior' | 'mage' | 'rogue' }
   | { type: 'upgradeEquip'; equipId: string }
   | { type: 'newCycle' }

@@ -3,6 +3,7 @@ import { BOSS_CLEAR, ENDING, INTRO, NEW_CYCLE, SECRET_CLEAR } from '../game/data
 import { newGame, reduce } from '../game/engine'
 import { SAVE_KEY, deserialize, serialize } from '../game/save'
 import type { Action, GameState } from '../game/types'
+import { JOBS, canTakeJob, jobById } from '../game/data/jobs'
 import { monsterById } from '../game/data/monsters'
 import { Scene } from './art'
 import { setBgm } from './bgm'
@@ -91,6 +92,7 @@ export function App() {
       else if (e.t === 'event') sfx('encounter')
       else if (e.t === 'eventResult') sfx(e.levelUps > 0 ? 'levelup' : e.hp < 0 ? 'hurt' : e.gold > 0 ? 'coin' : e.hp + e.mp > 0 ? 'heal' : 'click')
       else if (e.t === 'upgraded') (say(`강화 성공! +${e.level}`), sfx('levelup'))
+      else if (e.t === 'jobChanged') (say(`${jobById(e.job).name}(으)로 전직했다!`), sfx('levelup'))
       else if (e.t === 'respec') (say(`스텟 ${e.points}포인트를 돌려받았다.`), sfx('heal'))
       else if (e.t === 'questClaimed') (say('의뢰 완료! 보상을 받았다.'), sfx('victory'))
     }
@@ -188,7 +190,7 @@ export function App() {
   const inBattle = screen.n === 'battle'
   return (
     <div className="game">
-      {!inBattle && screen.n !== 'story' && screen.n !== 'ending' ? <Hud player={game.player} onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
+      {!inBattle && screen.n !== 'story' && screen.n !== 'ending' ? <Hud player={game.player} jobReady={!game.player.job && JOBS.some((j) => canTakeJob(game.player, j.id))} onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
       {body}
       {showChar && (
         <Character

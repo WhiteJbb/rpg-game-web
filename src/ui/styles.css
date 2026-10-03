@@ -330,6 +330,9 @@ input {
 @keyframes shake { 20% { transform: translateX(-8px); } 50% { transform: translateX(7px); } 80% { transform: translateX(-4px); } }
 .actions { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .actions .btn { padding: 10px 4px; }
+.actions-6 { grid-template-columns: repeat(6, 1fr); }
+.btn-skill { background: #f6e3b4; }
+.btn-skill .item-text { align-items: center; text-align: center; }
 .actions-list { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 .btn-item { font-size: 0.95rem; padding: 6px 10px; justify-content: flex-start; }
 /* 아이콘 옆에 이름과 설명을 두 줄로. 길면 칸 안에서 줄바꿈한다. */
@@ -343,6 +346,8 @@ input {
   .player-plate { flex: none; }
   .actions { grid-template-columns: repeat(4, 1fr); }
   .actions .btn-primary { grid-column: span 4; }
+  .actions-6 .btn-primary { grid-column: span 3; }
+  .actions-6 .btn-skill { grid-column: span 1; }
   .actions-list { grid-template-columns: repeat(2, 1fr); }
   .enemy-art { max-height: 38vh; }
 }
@@ -436,6 +441,14 @@ input {
 .char-left { display: grid; gap: 8px; align-content: start; }
 .char-art { width: 100%; aspect-ratio: 1; }
 .char-art.art-missing { font-size: 6rem; }
+.jobs { display: grid; gap: 8px; }
+.job { display: flex; align-items: center; gap: 10px; background: #fff8ea; border: 2px solid var(--paper-dark); border-radius: 12px; padding: 8px 10px; }
+.job-current { border-color: var(--exp); }
+.job-art { width: 56px; height: 56px; flex: none; }
+.job-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.job-ok { color: var(--exp); }
+.job-need { color: var(--accent-dark); }
+.badge { padding: 0 5px; }
 .gear-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .gear-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; text-align: center; }
 .gear-slot small { line-height: 1.2; }
@@ -456,6 +469,8 @@ input {
 .char-foot { margin-top: 14px; justify-content: space-between; flex-wrap: wrap; }
 .char-foot .row { flex-wrap: wrap; justify-content: flex-start; }
 @media (max-width: 620px) {
+  .job { flex-wrap: wrap; }
+  .job .btn, .job .owned { flex-basis: 100%; }
   .char { grid-template-columns: 1fr; }
   .char-art { width: 120px; margin: 0 auto; }
 }

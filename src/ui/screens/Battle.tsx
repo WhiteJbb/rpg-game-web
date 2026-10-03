@@ -3,7 +3,8 @@ import { POTIONS, SPELLS, equipById, potionById, spellById } from '../../game/da
 import { monsterById } from '../../game/data/monsters'
 import * as R from '../../game/rules'
 import type { Action, GameEvent, GameState, StatusKind, Victory } from '../../game/types'
-import { Art, Scene, artUrl } from '../art'
+import { jobById } from '../../game/data/jobs'
+import { Art, Scene, artUrl, heroArt } from '../art'
 import { Bar, Gold, Modal, josa } from '../common'
 import { sfx } from '../sfx'
 
@@ -24,7 +25,7 @@ interface Fx {
   kind: 'dmg' | 'crit' | 'heal' | 'miss'
 }
 
-const STATUS_NAME: Record<StatusKind, string> = { burn: '화상', chill: '빙결', stun: '기절', poison: '중독' }
+const STATUS_NAME: Record<StatusKind, string> = { burn: '화상', chill: '빙결', stun: '기절', poison: '중독', venom: '맹독' }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -96,6 +97,29 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
               : '독이 온몸에 퍼진다!',
         )
         return sleep(700)
+      case 'skill': {
+        const skill = jobById(e.job).skill
+        setCaption(`${skill.name}!`)
+        setShown((s) => ({ ...s, pmp: e.mp, mhp: e.monsterHp }))
+        if (e.job === 'mage') {
+          sfx('heal')
+          setHeroAnim('hero-cast')
+          pop('player', '집중!', 'heal')
+          return sleep(600)
+        }
+        sfx('crit')
+        setHeroAnim('hero-attack')
+        setAnim('monster-hit')
+        pop('monster', `${e.dmg}`, 'crit')
+        return sleep(700)
+      }
+      case 'venomTick':
+        sfx('hit')
+        setCaption(`${m.name}의 몸에 독이 퍼진다!`)
+        setAnim('monster-hit')
+        pop('monster', `${e.dmg}`, 'dmg')
+        setShown((s) => ({ ...s, mhp: e.monsterHp }))
+        return sleep(600)
       case 'burnTick':
         sfx('hit')
         setCaption(`${josa(m.name, '이', '가')} 불길에 휩싸여 있다!`)
@@ -162,6 +186,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   }
 
   const locked = busy || result !== null
+  const skill = p.job ? jobById(p.job).skill : null
   const b = game.battle
   return (
     <Scene bg={regionId} className={`battle-scene ${anim === 'spell' ? 'flash' : ''}`}>
@@ -171,9 +196,10 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
             {m.boss && <span className="boss-tag">BOSS</span>} {m.name} <span className="lv">Lv.{m.level}</span>
           </strong>
           <Bar kind="enemy" value={shown.mhp} max={m.hp} />
-          {!locked && b && (b.burn || b.chill > 0 || b.stunned) && (
+          {!locked && b && (b.burn || b.venom || b.chill > 0 || b.stunned) && (
             <div className="statuses">
               {b.burn && <span className="status status-burn">화상 {b.burn.turns}</span>}
+              {b.venom && <span className="status status-poison">맹독 {b.venom.turns}</span>}
               {b.chill > 0 && <span className="status status-chill">빙결 {b.chill}</span>}
               {b.stunned && <span className="status status-stun">기절</span>}
             </div>
@@ -188,7 +214,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
             </span>
           )}
         </div>
-        {artUrl('characters', 'hero-back') && <Art kind="characters" id="hero-back" alt="" className={`hero ${heroAnim}`} />}
+        {artUrl('characters', 'hero-back') && <Art kind="characters" id={heroArt(p.job, true)} alt="" className={`hero ${heroAnim}`} />}
       </div>
 
       <div className="battle-bottom">
@@ -200,6 +226,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
             <strong>
               {p.name} <span className="lv">Lv.{p.level}</span>
               {!locked && b && b.poison > 0 && <span className="status status-poison">중독 {b.poison}</span>}
+              {!locked && b?.focus && <span className="status status-chill">집중</span>}
             </strong>
             {/* 결과가 나온 뒤에는 실제 값(레벨업 회복 포함)을 보여준다 */}
             <Bar kind="hp" label="HP" value={result?.t === 'victory' ? p.hp : shown.php} max={R.maxHp(p)} />
@@ -212,10 +239,22 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
           </div>
 
           {menu === null && (
-            <div className="actions">
+            <div className={`actions ${skill ? 'actions-6' : ''}`}>
               <button className="btn btn-primary" disabled={locked} onClick={() => run({ type: 'attack' })}>
                 공격
               </button>
+              {skill && (
+                <button className="btn btn-skill" disabled={locked || shown.pmp < skill.mp} title={skill.desc} onClick={() => run({ type: 'skill' })}>
+                  <span className="item-text">
+                    {skill.name}
+                    {skill.mp > 0 && (
+                      <small>
+                        <b className="mp-cost">MP {skill.mp}</b>
+                      </small>
+                    )}
+                  </span>
+                </button>
+              )}
               <button className="btn" disabled={locked} onClick={() => setMenu('spell')}>
                 마법
               </button>
@@ -233,12 +272,12 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
           {menu === 'spell' && (
             <div className="actions actions-list">
               {SPELLS.filter((sp) => p.spells.includes(sp.id)).map((sp) => (
-                <button key={sp.id} className="btn btn-item" disabled={locked || shown.pmp < sp.mp} onClick={() => run({ type: 'cast', spellId: sp.id })}>
+                <button key={sp.id} className="btn btn-item" disabled={locked || shown.pmp < R.spellCost(p, sp.mp)} onClick={() => run({ type: 'cast', spellId: sp.id })}>
                   <Art kind="items" id={sp.id} alt="" className="icon" fallback="✨" />
                   <span className="item-text">
                     {sp.name}
                     <small>
-                      <b className="mp-cost">MP {sp.mp}</b> · {sp.desc}
+                      <b className="mp-cost">MP {R.spellCost(p, sp.mp)}</b> · {sp.desc}
                     </small>
                   </span>
                 </button>

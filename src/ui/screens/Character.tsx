@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { EQUIPS, POTIONS, SLOTS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
-import { Art } from '../art'
+import { JOBS, JOB_LEVEL, canTakeJob, jobById } from '../../game/data/jobs'
+import { Art, heroArt } from '../art'
 import { Bar, Confirm, Gold, Modal, SLOT_ICON, equipBonus, equipName } from '../common'
 import { SaveManager } from './SaveManager'
 
@@ -38,7 +39,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
   const spent = Object.values(p.stats).reduce((a, b) => a + b, 0) - 20
   if (resetting) return <Confirm text="정말 모든 진행을 지우고 처음으로 돌아갈까요?" yes="전부 지운다" onYes={onReset} onNo={() => setResetting(false)} />
   return (
-    <Modal title={`${p.name} · Lv.${p.level}${game.cycle > 0 ? ` · ${game.cycle + 1}회차` : ''}`} onClose={onClose} wide>
+    <Modal title={`${p.name} · Lv.${p.level}${p.job ? ` · ${jobById(p.job).name}` : ''}${game.cycle > 0 ? ` · ${game.cycle + 1}회차` : ''}`} onClose={onClose} wide>
       {asking === 'respec' && (
         <Confirm
           text={`${R.respecCost(p).toLocaleString()} 골드를 내고 찍은 스텟 ${spent}포인트를 전부 돌려받을까요?`}
@@ -58,7 +59,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
       {asking === 'save' && <SaveManager game={game} onImport={onImport} onClose={() => setAsking(null)} />}
       <div className="char">
         <div className="char-left">
-          <Art kind="characters" id="hero" alt={p.name} className="char-art" fallback="🧑‍🌾" />
+          <Art kind="characters" id={heroArt(p.job)} alt={p.name} className="char-art" fallback="🧑‍🌾" />
           <Bar kind="exp" label="EXP" value={p.exp} max={R.expToNext(p.level)} />
           <div className="gear-slots">
             {SLOTS.map((slot) => {
@@ -105,6 +106,36 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
               </li>
             ))}
           </ul>
+
+          <h3>
+            직업 <small>{p.job ? jobById(p.job).name : p.level < JOB_LEVEL ? `Lv.${JOB_LEVEL}부터 전직 가능` : '전직 가능'}</small>
+          </h3>
+          <div className="jobs">
+            {JOBS.map((job) => {
+              const current = p.job === job.id
+              const ok = canTakeJob(p, job.id)
+              return (
+                <div key={job.id} className={`job ${current ? 'job-current' : ''}`}>
+                  <Art kind="characters" id={heroArt(job.id)} alt="" className="job-art" fallback="🧑‍🌾" />
+                  <div className="job-info">
+                    <strong>{job.name}</strong>
+                    <small>{job.desc}</small>
+                    <small>
+                      {job.passive} · <b>{job.skill.name}</b>: {job.skill.desc}
+                    </small>
+                    <small className={ok || current ? 'job-ok' : 'job-need'}>조건: {job.requirement}</small>
+                  </div>
+                  {current ? (
+                    <span className="owned">현재 직업</span>
+                  ) : (
+                    <button className="btn btn-buy" disabled={!ok || p.gold < R.jobChangeCost(p)} onClick={() => act({ type: 'changeJob', job: job.id })}>
+                      전직 {R.jobChangeCost(p) > 0 && <Gold amount={R.jobChangeCost(p)} />}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
 
           <h3>포션</h3>
           <div className="bag">
@@ -155,7 +186,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                 <span className="item-text">
                   {sp.name}
                   <small>
-                    <b className="mp-cost">MP {sp.mp}</b> · {sp.desc}
+                    <b className="mp-cost">MP {R.spellCost(p, sp.mp)}</b> · {sp.desc}
                   </small>
                 </span>
               </span>

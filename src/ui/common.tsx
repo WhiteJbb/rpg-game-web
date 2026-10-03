@@ -66,7 +66,7 @@ export function Gold({ amount }: { amount: number }) {
   )
 }
 
-export function Hud({ player, onCharacter, onQuests, questBadge = 0 }: { player: Player; onCharacter?: () => void; onQuests?: () => void; questBadge?: number }) {
+export function Hud({ player, onCharacter, onQuests, questBadge = 0, jobReady = false }: { player: Player; onCharacter?: () => void; onQuests?: () => void; questBadge?: number; jobReady?: boolean }) {
   return (
     <header className="hud">
       <div className="hud-id">
@@ -86,7 +86,7 @@ export function Hud({ player, onCharacter, onQuests, questBadge = 0 }: { player:
       )}
       {onCharacter && (
         <button className="btn btn-small hud-char" onClick={onCharacter}>
-          캐릭터{player.points > 0 && <span className="badge">{player.points}</span>}
+          캐릭터{(player.points > 0 || jobReady) && <span className="badge">{jobReady ? '전직' : player.points}</span>}
         </button>
       )}
     </header>

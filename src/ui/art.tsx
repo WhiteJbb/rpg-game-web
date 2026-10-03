@@ -17,6 +17,12 @@ interface ArtProps {
   style?: CSSProperties
 }
 
+/** 직업에 맞는 주인공 그림 id. 그 직업 그림이 아직 없으면 기본 모습. */
+export function heroArt(job: string | null, back = false): string {
+  const suffix = back ? '-back' : ''
+  return job && artUrl('characters', `hero-${job}${suffix}`) ? `hero-${job}${suffix}` : `hero${suffix}`
+}
+
 export function Art({ kind, id, alt, className = '', fallback = '❔', style }: ArtProps) {
   const url = artUrl(kind, id)
   if (url) return <img className={`art ${className}`} src={url} alt={alt} draggable={false} style={style} />

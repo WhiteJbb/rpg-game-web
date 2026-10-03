@@ -1,5 +1,6 @@
 import { EVENTS, eventById, type Choice } from './data/events'
 import { EQUIPS, equipById, equipWorth, potionById, spellById } from './data/items'
+import { canTakeJob, jobById } from './data/jobs'
 import { monsterById, type Monster, type Special } from './data/monsters'
 import { QUESTS, questById, questTarget } from './data/quests'
 import { REGIONS, regionById } from './data/regions'
@@ -27,6 +28,7 @@ export function newGame(name: string): GameState {
     weapon: null,
     armor: null,
     accessory: null,
+    job: null,
     upgrades: {},
   }
   player.hp = R.maxHp(player)
@@ -47,7 +49,7 @@ export function newGame(name: string): GameState {
 
 export const newBattle = (monsterId: string, regionId: string, cycle = 0): Battle => {
   const m = monsterById(monsterId, cycle)
-  return { monsterId, regionId, isBoss: m.boss, monsterHp: m.hp, charging: null, burn: null, chill: 0, stunned: false, poison: 0, damaged: false }
+  return { monsterId, regionId, isBoss: m.boss, monsterHp: m.hp, charging: null, burn: null, venom: null, focus: false, chill: 0, stunned: false, poison: 0, damaged: false }
 }
 
 export const isRegionOpen = (s: GameState, regionId: string) => {
@@ -94,7 +96,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
   const inBattle = s.battle !== null
 
   if (s.pending && action.type !== 'choose') return fail('눈앞의 일부터 정해야 한다')
-  const battleOnly = ['attack', 'cast', 'defend', 'flee']
+  const battleOnly = ['attack', 'cast', 'defend', 'flee', 'skill']
   if (battleOnly.includes(action.type) && !inBattle) return fail('전투 중이 아닙니다')
   if (inBattle && !battleOnly.includes(action.type) && action.type !== 'usePotion')
     return fail('전투 중에는 할 수 없습니다')
@@ -235,6 +237,17 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       return s
     }
 
+    case 'changeJob': {
+      if (p.job === action.job) return fail('이미 그 직업입니다')
+      if (!canTakeJob(p, action.job)) return fail('전직 조건을 채우지 못했습니다')
+      const cost = R.jobChangeCost(p)
+      if (!spend(cost)) return fail('골드가 부족합니다')
+      p.job = action.job
+      clampVitals(p)
+      emit({ t: 'jobChanged', job: action.job, cost })
+      return s
+    }
+
     case 'respec': {
       const keys = Object.keys(BASE_STATS) as (keyof typeof BASE_STATS)[]
       const points = keys.reduce((sum, k) => sum + p.stats[k] - BASE_STATS[k], 0)
@@ -316,9 +329,11 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const m = monsterById(b.monsterId, s.cycle)
       const spell = spellById(action.spellId)
       if (!p.spells.includes(spell.id)) return fail('배우지 않은 마법입니다')
-      if (p.mp < spell.mp) return fail('MP가 부족합니다')
-      p.mp -= spell.mp
-      const raw = R.spellPower(p, spell.power) * between(rng, 0.9, 1.1)
+      const cost = R.spellCost(p, spell.mp)
+      if (p.mp < cost) return fail('MP가 부족합니다')
+      p.mp -= cost
+      const raw = R.spellPower(p, spell.power) * between(rng, 0.9, 1.1) * (b.focus ? R.FOCUS_MULT : 1)
+      b.focus = false
       const res = spell.effect === 'pierce' ? m.res * R.PIERCE_RES : m.res
       const dmg = Math.min(b.monsterHp, R.resist(raw, res))
       b.monsterHp -= dmg
@@ -334,6 +349,39 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
         else if (spell.effect === 'chill') b.chill = R.CHILL_TURNS
         else b.stunned = true
         emit({ t: 'status', target: 'monster', kind: spell.effect })
+      }
+      enemyPhase(s, rng, false)
+      return s
+    }
+
+    case 'skill': {
+      if (!p.job) return fail('전직해야 쓸 수 있습니다')
+      const b = s.battle!
+      const m = monsterById(b.monsterId, s.cycle)
+      const skill = jobById(p.job).skill
+      if (p.mp < skill.mp) return fail('MP가 부족합니다')
+      p.mp -= skill.mp
+      let dmg = 0
+      if (p.job === 'mage') {
+        // 명상: 공격하지 않고 MP를 채우며 다음 마법을 벼린다
+        p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * R.MEDITATE_MP))
+        b.focus = true
+      } else if (p.job === 'warrior') {
+        const raw = R.attackPower(p) * R.SMASH_MULT * between(rng, 0.9, 1.1)
+        dmg = Math.min(b.monsterHp, R.mitigate(raw, m.def * R.SMASH_PIERCE))
+      } else {
+        const raw = R.attackPower(p) * R.CRIT_MULT * between(rng, 0.9, 1.1)
+        dmg = Math.min(b.monsterHp, R.mitigate(raw, m.def))
+      }
+      b.monsterHp -= dmg
+      emit({ t: 'skill', job: p.job, dmg, monsterHp: b.monsterHp, mp: p.mp })
+      if (b.monsterHp <= 0) {
+        win(s, m, rng)
+        return s
+      }
+      if (p.job === 'rogue') {
+        b.venom = { turns: R.VENOM_TURNS, dmg: Math.max(1, Math.round(dmg * R.VENOM_RATIO)) }
+        emit({ t: 'status', target: 'monster', kind: 'venom' })
       }
       enemyPhase(s, rng, false)
       return s
@@ -404,6 +452,14 @@ function enemyPhase(s: GameState, rng: Rng, defending: boolean) {
     b.monsterHp -= dmg
     if (--b.burn.turns <= 0) b.burn = null
     s.events.push({ t: 'burnTick', dmg, monsterHp: b.monsterHp })
+    if (b.monsterHp <= 0) return win(s, m, rng)
+  }
+
+  if (b.venom) {
+    const dmg = Math.min(b.monsterHp, b.venom.dmg)
+    b.monsterHp -= dmg
+    if (--b.venom.turns <= 0) b.venom = null
+    s.events.push({ t: 'venomTick', dmg, monsterHp: b.monsterHp })
     if (b.monsterHp <= 0) return win(s, m, rng)
   }
 
