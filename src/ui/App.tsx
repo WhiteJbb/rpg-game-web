@@ -8,6 +8,7 @@ import { monsterById } from '../game/data/monsters'
 import { Scene } from './art'
 import { setBgm } from './bgm'
 import { Dialog, Hud, MuteButton } from './common'
+import { DEBUG, Debug, debugGame } from './Debug'
 import { sfx } from './sfx'
 import { Battle, type BattleOutcome } from './screens/Battle'
 import { Casino } from './screens/Casino'
@@ -20,7 +21,9 @@ import { Title } from './screens/Title'
 import { Town, type Place } from './screens/Town'
 import { WorldMap } from './screens/WorldMap'
 
-type Screen =
+const KEY = DEBUG ? `${SAVE_KEY}-debug` : SAVE_KEY
+
+export type Screen =
   | { n: 'title' }
   | { n: 'town' }
   | { n: 'map' }
@@ -32,7 +35,7 @@ type Screen =
 
 function loadSave(): GameState | null {
   try {
-    return deserialize(localStorage.getItem(SAVE_KEY))
+    return deserialize(localStorage.getItem(KEY))
   } catch {
     return null // 저장소를 쓸 수 없는 환경 (사생활 보호 모드 등)
   }
@@ -47,8 +50,8 @@ export function App() {
 
   useEffect(() => {
     try {
-      if (game) localStorage.setItem(SAVE_KEY, serialize(game))
-      else localStorage.removeItem(SAVE_KEY)
+      if (game) localStorage.setItem(KEY, serialize(game))
+      else localStorage.removeItem(KEY)
     } catch {
       /* 저장 실패해도 플레이는 계속 */
     }
@@ -119,9 +122,29 @@ export function App() {
     setScreen({ n: 'story', bg: 'meadow', lines: NEW_CYCLE, next: { n: 'town' } })
   }
 
+  const debug = DEBUG && (
+    <Debug
+      game={game}
+      screen={screen}
+      patch={(fn) => {
+        const next = structuredClone(game ?? debugGame())
+        next.events = []
+        fn(next)
+        setGame(next)
+        if (!game || screen.n === 'title') setScreen({ n: 'town' })
+      }}
+      goto={setScreen}
+      onReset={() => {
+        setGame(null)
+        setScreen({ n: 'title' })
+      }}
+    />
+  )
+
   if (screen.n === 'title' || !game) {
     return (
-      <>
+      <div className="game">
+        {debug}
         <MuteButton className="mute-float" />
         <Title
           hasSave={game !== null}
@@ -131,7 +154,7 @@ export function App() {
             setScreen({ n: 'story', bg: 'meadow', lines: INTRO, next: { n: 'town' } })
           }}
         />
-      </>
+      </div>
     )
   }
 
@@ -190,6 +213,7 @@ export function App() {
   const inBattle = screen.n === 'battle'
   return (
     <div className="game">
+      {debug}
       {!inBattle && screen.n !== 'story' && screen.n !== 'ending' ? <Hud player={game.player} jobReady={!game.player.job && JOBS.some((j) => canTakeJob(game.player, j.id))} onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
       {body}
       {showChar && (
