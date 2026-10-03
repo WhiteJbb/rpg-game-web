@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { EQUIPS, POTIONS, SPELLS, equipById } from '../../game/data/items'
+import { EQUIPS, POTIONS, SLOTS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
 import { Art } from '../art'
-import { Bar, Confirm, Gold, Modal, equipBonus, equipName } from '../common'
+import { Bar, Confirm, Gold, Modal, SLOT_ICON, equipBonus, equipName } from '../common'
 import { SaveManager } from './SaveManager'
 
 const pct = (n: number) => `${Math.round(n * 100)}%`
 
 const STATS: { key: StatKey; name: string; effect: (g: GameState) => string }[] = [
   { key: 'str', name: '힘', effect: (g) => `공격력 ${R.attackPower(g.player)}` },
-  { key: 'int', name: '지력', effect: (g) => `마법 위력 ×${(1 + R.totalStat(g.player, 'int') * 0.05).toFixed(2)}, 최대 MP` },
+  { key: 'int', name: '지력', effect: (g) => `마법 위력 ×${(1 + R.totalStat(g.player, 'int') * R.SPELL_INT_SCALE).toFixed(2)}, 최대 MP` },
   { key: 'def', name: '방어', effect: (g) => `방어력 ${Math.round(R.defensePower(g.player))}` },
   { key: 'agi', name: '민첩', effect: (g) => `회피 ${pct(R.dodgeChance(g.player))}, 도망 ${pct(R.fleeChance(g.player))}` },
   { key: 'crit', name: '치명', effect: (g) => `치명타 ${pct(R.critChance(g.player))}` },
@@ -61,9 +61,12 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
           <Art kind="characters" id="hero" alt={p.name} className="char-art" fallback="🧑‍🌾" />
           <Bar kind="exp" label="EXP" value={p.exp} max={R.expToNext(p.level)} />
           <p className="char-gear">
-            무기: {p.weapon ? equipName(p, equipById(p.weapon)) : '없음'}
-            <br />
-            방어구: {p.armor ? equipName(p, equipById(p.armor)) : '없음'}
+            {SLOTS.map((slot) => (
+              <span key={slot.id}>
+                {slot.name}: {p[slot.id] ? equipName(p, equipById(p[slot.id]!)) : '없음'}
+                <br />
+              </span>
+            ))}
           </p>
         </div>
         <div className="char-right">
@@ -97,7 +100,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
             ))}
           </ul>
 
-          <h3>가방</h3>
+          <h3>포션</h3>
           <div className="bag">
             {POTIONS.map((po) => (
               <button key={po.id} className="btn btn-item" disabled={p.potions[po.id] < 1} onClick={() => act({ type: 'usePotion', potionId: po.id })} title="마시기">
@@ -110,19 +113,33 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                 </span>
               </button>
             ))}
-            {owned.map((e) => (
-              <button key={e.id} className="btn btn-item" disabled={p[e.slot] === e.id} onClick={() => act({ type: 'equip', equipId: e.id })}>
-                <Art kind="items" id={e.id} alt="" className="icon" fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} />
-                <span className="item-text">
-                  {equipName(p, e)}
-                  <small>
-                    {equipBonus(p, e)}
-                    {p[e.slot] === e.id && ' · 착용 중'}
-                  </small>
-                </span>
-              </button>
-            ))}
           </div>
+
+          {SLOTS.map((slot) => {
+            const items = owned.filter((e) => e.slot === slot.id)
+            return (
+              <div key={slot.id}>
+                <h3>
+                  {slot.name} <small>{items.length}개</small>
+                </h3>
+                <div className="bag">
+                  {items.length === 0 && <span className="empty">아직 없다</span>}
+                  {items.map((e) => (
+                    <button key={e.id} className="btn btn-item" disabled={p[e.slot] === e.id} onClick={() => act({ type: 'equip', equipId: e.id })}>
+                      <Art kind="items" id={e.id} alt="" className="icon" fallback={SLOT_ICON[e.slot]} />
+                      <span className="item-text">
+                        {equipName(p, e)}
+                        <small>
+                          {equipBonus(p, e)}
+                          {p[e.slot] === e.id && ' · 착용 중'}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
 
           <h3>마법</h3>
           <div className="bag">

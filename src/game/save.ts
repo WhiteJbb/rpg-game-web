@@ -23,6 +23,7 @@ export function deserialize(raw: string | null): GameState | null {
     if (!Array.isArray(p.spells) || !Array.isArray(p.owned)) return null
     if (!REGIONS.every((r) => isNum(s.progress?.[r.id]?.kills))) return null
     if (typeof p.upgrades !== 'object' || p.upgrades === null) p.upgrades = {}
+    p.accessory ??= null
     p.hp = Math.max(1, Math.min(p.hp, maxHp(p)))
     p.mp = Math.max(0, Math.min(p.mp, maxMp(p)))
 
