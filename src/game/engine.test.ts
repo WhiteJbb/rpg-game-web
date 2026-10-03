@@ -261,6 +261,68 @@ describe('engine', () => {
     expect(errorOf(reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1)))).toBeTruthy()
   })
 
+  it('전직: 레벨과 스텟 조건을 채워야 하고, 첫 전직은 무료, 변경은 골드가 든다', () => {
+    let s = newGame('t')
+    s.player.stats.str = 25
+    expect(errorOf(reduce(s, { type: 'changeJob', job: 'warrior' }, seeded(1)))).toBeTruthy() // 레벨 부족
+    s.player.level = 10
+    expect(errorOf(reduce(s, { type: 'changeJob', job: 'mage' }, seeded(1)))).toBeTruthy() // 지력 부족
+    const hpBefore = R.maxHp(s.player)
+    s = reduce(s, { type: 'changeJob', job: 'warrior' }, seeded(1))
+    expect(s.player.job).toBe('warrior')
+    expect(s.player.gold).toBe(50)
+    expect(R.maxHp(s.player)).toBeGreaterThan(hpBefore)
+    s.player.stats.int = 25
+    s.player.gold = R.jobChangeCost(s.player) - 1
+    expect(errorOf(reduce(s, { type: 'changeJob', job: 'mage' }, seeded(1)))).toBeTruthy()
+    s.player.gold = R.jobChangeCost(s.player)
+    s.player.hp = R.maxHp(s.player)
+    s = reduce(s, { type: 'changeJob', job: 'mage' }, seeded(1))
+    expect(s.player.job).toBe('mage')
+    expect(s.player.gold).toBe(0)
+    expect(s.player.hp).toBe(R.maxHp(s.player)) // 전사의 HP 보너스가 빠지면 현재 HP도 맞춘다
+  })
+
+  it('직업 기술: 전직 전에는 못 쓰고, 직업마다 효과가 다르다', () => {
+    const base = newGame('t')
+    base.player.level = 10
+    base.player.mp = 50
+    base.player.stats.agi = 0
+    base.battle = { ...newBattle('ogre', 'meadow'), monsterHp: 9999 }
+    expect(errorOf(reduce(base, { type: 'skill' }, seeded(1)))).toBeTruthy()
+
+    const as = (job: 'warrior' | 'mage' | 'rogue') => ({ ...structuredClone(base), player: { ...structuredClone(base.player), job } })
+    const dealt = (s: typeof base) => 9999 - s.battle!.monsterHp
+
+    const smash = reduce(as('warrior'), { type: 'skill' }, seeded(2))
+    const plain = reduce(as('warrior'), { type: 'attack' }, seeded(2))
+    expect(smash.events.find((e) => e.t === 'skill')).toBeTruthy()
+    expect(smash.player.mp).toBeLessThan(50)
+
+    const stab = reduce(as('rogue'), { type: 'skill' }, seeded(2))
+    expect(stab.battle!.venom).not.toBeNull()
+    expect(reduce(stab, { type: 'defend' }, seeded(2)).events.some((e) => e.t === 'venomTick')).toBe(true)
+
+    const mage = as('mage')
+    mage.player.mp = 0
+    const calm = reduce(mage, { type: 'skill' }, seeded(2))
+    expect(calm.player.mp).toBeGreaterThan(0)
+    expect(calm.battle!.focus).toBe(true)
+    expect(dealt(calm)).toBe(0)
+    // 집중 상태의 마법은 더 세고, 한 번 쓰면 풀린다
+    const focused = structuredClone(mage)
+    focused.player.mp = 50
+    focused.battle!.focus = true
+    const normal = structuredClone(mage)
+    normal.player.mp = 50
+    const a = reduce(focused, { type: 'cast', spellId: 'fireball' }, seeded(5))
+    const b = reduce(normal, { type: 'cast', spellId: 'fireball' }, seeded(5))
+    expect(dealt(a)).toBeGreaterThan(dealt(b) * 1.3)
+    expect(a.battle!.focus).toBe(false)
+    expect(50 - b.player.mp).toBeLessThan(8) // 마법사는 MP를 덜 쓴다 (방어 턴 회복 없음)
+    expect(dealt(smash)).toBeGreaterThan(dealt(plain))
+  })
+
   it('스텟 초기화: 골드를 내고 찍은 포인트를 전부 돌려받는다', () => {
     let s = newGame('t')
     expect(errorOf(reduce(s, { type: 'respec' }, seeded(1)))).toBeTruthy() // 찍은 게 없다

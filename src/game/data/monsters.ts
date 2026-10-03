@@ -52,8 +52,9 @@ function build({ id, name, level, mods, specials }: Def, cycle: number): Monster
     id,
     name,
     level: l,
-    hp: Math.round((25 + 16 * l + 0.58 * l * l) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1)),
-    atk: Math.round((10 + 4.6 * l) * (mods.atk ?? 1) * (boss ? BOSS_ATK : 1)),
+    // 제곱 항은 전직(Lv.10) 이후 강해지는 플레이어를 따라가기 위한 것
+    hp: Math.round((25 + 16 * l + 0.68 * l * l) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1)),
+    atk: Math.round((10 + 4.6 * l + 0.018 * l * l) * (mods.atk ?? 1) * (boss ? BOSS_ATK : 1)),
     def: Math.round((2 + 1.6 * l) * (mods.def ?? 1)),
     res: Math.round((2 + 1.6 * l) * (mods.res ?? 1)),
     exp: Math.round((3 + 4 * Math.pow(l, 1.5)) * (boss ? 6 : 1)),
@@ -81,7 +82,7 @@ const DEFS: Def[] = [
   mk('pixie', '픽시', 12, { hp: 0.7, def: 0.7, res: 1.6 }, [{ kind: 'drain', name: '정기 흡수', chance: 0.3 }]),
   mk('dark-elf', '다크엘프', 14, { res: 1.3 }, [{ kind: 'poison', name: '독화살', chance: 0.3 }]),
   mk('treant', '트렌트', 16, { hp: 1.3, def: 1.7, res: 0.5, atk: 0.9 }, [{ kind: 'heavy', name: '뿌리 내려치기', chance: 0.25 }]),
-  mk('elf-queen', '엘프여왕', 18, { boss: true, res: 1.5, hp: 1.1 }, [
+  mk('elf-queen', '엘프여왕', 18, { boss: true, res: 1.5, hp: 1.15, atk: 1.12 }, [
     { kind: 'charge', name: '정령의 심판', chance: 0.3 },
     { kind: 'drain', name: '생명의 덩굴', chance: 0.2 },
   ]),

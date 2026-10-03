@@ -1,5 +1,6 @@
 import { EVENTS } from './data/events'
 import { EQUIPS, POTIONS, SPELLS, type Equip } from './data/items'
+import { canTakeJob, jobById } from './data/jobs'
 import { monsterById } from './data/monsters'
 import { QUESTS } from './data/quests'
 import { REGIONS } from './data/regions'
@@ -62,6 +63,7 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
       const [stat] = [...WEIGHTS[build]].sort((a, b) => p().stats[a[0]] / total - a[1] - (p().stats[b[0]] / total - b[1]))[0]
       act({ type: 'allocate', stat, amount: 1 })
     }
+    if (!p().job && canTakeJob(p(), build)) act({ type: 'changeJob', job: build })
     for (const slot of ['weapon', 'armor', 'accessory'] as const) {
       const current = p()[slot]
       const best = EQUIPS.filter((e) => e.slot === slot && !e.dropFrom && !p().owned.includes(e.id) && e.price <= p().gold * 0.8)
@@ -107,11 +109,13 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
         act({ type: 'usePotion', potionId: potion })
         potionsUsed++
       } else if (build === 'mage') {
-        const spell = SPELLS.filter((sp) => p().spells.includes(sp.id) && sp.mp <= p().mp).sort((a, b) => b.power - a.power)[0]
+        const spell = SPELLS.filter((sp) => p().spells.includes(sp.id) && R.spellCost(p(), sp.mp) <= p().mp).sort((a, b) => b.power - a.power)[0]
         if (spell) act({ type: 'cast', spellId: spell.id })
+        else if (p().job) act({ type: 'skill' }) // 명상
         else if (p().potions.mp > 0) act({ type: 'usePotion', potionId: 'mp' })
         else act({ type: 'attack' })
-      } else act({ type: 'attack' })
+      } else if (p().job && p().mp >= jobById(p().job!).skill.mp) act({ type: 'skill' })
+      else act({ type: 'attack' })
     }
     const lost = s.events.some((e) => e.t === 'defeat')
     st.battles++
