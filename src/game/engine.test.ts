@@ -4,9 +4,9 @@ import { monsterById } from './data/monsters'
 import { REGIONS } from './data/regions'
 import { EVENTS } from './data/events'
 import { QUESTS } from './data/quests'
-import { canChallengeBoss, isQuestDone, isRegionOpen, newBattle, newGame, reduce } from './engine'
+import { canChallengeBoss, canChallengeSecret, isQuestDone, isQuestVisible, isRegionOpen, newBattle, newGame, reduce } from './engine'
 import * as R from './rules'
-import { deserialize, serialize } from './save'
+import { deserialize, exportSave, importSave, serialize } from './save'
 import type { GameState, PotionId, Rng, StatKey } from './types'
 
 function seeded(seed: number): Rng {
@@ -241,13 +241,94 @@ describe('engine', () => {
     delete old.quests
     delete old.record
     delete old.pending
+    delete old.player.upgrades
+    delete old.cycle
     old.progress.meadow.bossDefeated = true
     old.battle = { monsterId: 'slime', regionId: 'meadow', isBoss: false, monsterHp: 5, charging: null }
     const s = deserialize(JSON.stringify(old))!
     expect(s.quests['meadow-boss'].progress).toBe(1)
     expect(s.record).toEqual({ wins: 0, defeats: 0 })
+    expect(s.player.upgrades).toEqual({})
+    expect(s.cycle).toBe(0)
     expect(s.battle).toMatchObject({ monsterHp: 5, burn: null, poison: 0 })
     expect(Object.keys(s.quests)).toHaveLength(QUESTS.length)
+  })
+
+  it('장비 강화: 수치가 오르고 비용이 점점 늘며 상한이 있다', () => {
+    let s = newGame('t')
+    s.player.gold = 1_000_000
+    expect(errorOf(reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1)))).toBeTruthy() // 미보유
+    s = reduce(s, { type: 'buyEquip', equipId: 'bronze-sword' }, seeded(1))
+    const before = R.totalStat(s.player, 'str')
+    const cost1 = R.upgradeCost(s.player, EQUIPS.find((e) => e.id === 'bronze-sword')!)
+    s = reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1))
+    expect(R.totalStat(s.player, 'str')).toBeGreaterThan(before)
+    expect(R.upgradeCost(s.player, EQUIPS.find((e) => e.id === 'bronze-sword')!)).toBeGreaterThan(cost1)
+    for (let i = 1; i < R.MAX_UPGRADE; i++) s = reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1))
+    expect(s.player.upgrades['bronze-sword']).toBe(R.MAX_UPGRADE)
+    expect(errorOf(reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1)))).toBeTruthy()
+  })
+
+  it('스텟 초기화: 골드를 내고 찍은 포인트를 전부 돌려받는다', () => {
+    let s = newGame('t')
+    expect(errorOf(reduce(s, { type: 'respec' }, seeded(1)))).toBeTruthy() // 찍은 게 없다
+    s = reduce(s, { type: 'allocate', stat: 'int', amount: 5 }, seeded(1))
+    s.player.gold = R.respecCost(s.player) - 1
+    expect(errorOf(reduce(s, { type: 'respec' }, seeded(1)))).toBeTruthy()
+    s.player.gold = R.respecCost(s.player)
+    s = reduce(s, { type: 'respec' }, seeded(1))
+    expect(s.player.points).toBe(5)
+    expect(s.player.stats.int).toBe(5)
+    expect(s.player.gold).toBe(0)
+    expect(s.player.mp).toBeLessThanOrEqual(R.maxMp(s.player))
+  })
+
+  it('숨은 보스는 엔딩 뒤에만 도전할 수 있고, 처음 쓰러뜨리면 전용 장비를 준다', () => {
+    let s = newGame('t')
+    for (const r of REGIONS) s.progress[r.id] = { kills: 8, bossDefeated: true }
+    expect(canChallengeSecret(s, 'vampire-castle')).toBe(false)
+    expect(isQuestVisible(s, 'secret-boss')).toBe(false)
+    expect(errorOf(reduce(s, { type: 'challengeBoss', regionId: 'vampire-castle', secret: true }, seeded(1)))).toBeTruthy()
+    s.cleared = true
+    expect(isQuestVisible(s, 'secret-boss')).toBe(true)
+    s = reduce(s, { type: 'challengeBoss', regionId: 'vampire-castle', secret: true }, seeded(1))
+    expect(s.battle?.monsterId).toBe('ancient-dragon')
+    s.battle!.monsterHp = 1
+    s = reduce(s, { type: 'attack' }, seeded(1))
+    const v = s.events.find((e) => e.t === 'victory')
+    expect(v && v.t === 'victory' && v.secretFirst && v.equipDrop).toBe('dragon-scale')
+    expect(v && v.t === 'victory' && v.bossFirst).toBeNull()
+    expect(isQuestDone(s, 'secret-boss')).toBe(true)
+  })
+
+  it('다음 회차: 성장은 그대로, 세계는 처음부터, 몬스터는 더 강하게', () => {
+    let s = newGame('t')
+    expect(errorOf(reduce(s, { type: 'newCycle' }, seeded(1)))).toBeTruthy()
+    s.cleared = true
+    s.player.level = 26
+    s.player.gold = 777
+    s.progress.meadow.bossDefeated = true
+    s.quests['meadow-hunt'] = { progress: 6, claimed: true }
+    s = reduce(s, { type: 'newCycle' }, seeded(1))
+    expect(s.cycle).toBe(1)
+    expect(s.cleared).toBe(false)
+    expect(s.player.level).toBe(26)
+    expect(s.player.gold).toBe(777)
+    expect(isRegionOpen(s, 'wolf-den')).toBe(false)
+    expect(s.quests['meadow-hunt']).toEqual({ progress: 0, claimed: false })
+    expect(monsterById('slime', 1).level).toBe(27)
+    expect(monsterById('slime', 1).hp).toBeGreaterThan(monsterById('slime').hp * 5)
+    s = reduce(s, { type: 'challengeBoss', regionId: 'meadow' }, seeded(1))
+    expect(errorOf(s)).toBeTruthy() // 처치 수도 초기화되었다
+  })
+
+  it('세이브 코드는 한글 이름도 왕복하고, 엉뚱한 코드는 거부한다', () => {
+    const s = newGame('홍길동')
+    s.cycle = 2
+    expect(importSave(exportSave(s))).toEqual(s)
+    expect(importSave('  ' + exportSave(s) + '\n')).toEqual(s)
+    expect(importSave('이건 세이브가 아니다')).toBeNull()
+    expect(importSave(btoa('{"version":1}'))).toBeNull()
   })
 
   it('데이터의 id 참조가 모두 유효하다', () => {
@@ -265,7 +346,7 @@ describe('engine', () => {
  */
 type Build = 'warrior' | 'mage'
 
-function playThrough(build: Build, seed: number) {
+function playThrough(build: Build, seed: number, cycles = 1) {
   const rng = seeded(seed)
   let s = newGame('bot')
   const act = (a: Parameters<typeof reduce>[1]) => (s = reduce(s, a, rng))
@@ -295,6 +376,15 @@ function playThrough(build: Build, seed: number) {
       const best = EQUIPS.filter((e) => e.slot === slot && e.price <= p().gold && score(e.id) > score(p()[slot])).sort((a, b) => score(b.id) - score(a.id))[0]
       if (best) act({ type: 'buyEquip', equipId: best.id })
     }
+    // 남는 골드로 착용 장비를 강화 (포션 값은 남겨 둔다)
+    for (let i = 0; i < 20; i++) {
+      const target = [p().weapon, p().armor]
+        .filter((id): id is string => id !== null && (p().upgrades[id] ?? 0) < R.MAX_UPGRADE)
+        .map((id) => EQUIPS.find((e) => e.id === id)!)
+        .sort((a, b) => R.upgradeCost(p(), a) - R.upgradeCost(p(), b))[0]
+      if (!target || R.upgradeCost(p(), target) > p().gold * 0.6) break
+      act({ type: 'upgradeEquip', equipId: target.id })
+    }
     if (build === 'mage') {
       const spell = SPELLS.filter((sp) => !p().spells.includes(sp.id) && sp.price <= p().gold && sp.power > 22).sort((a, b) => b.power - a.power)[0]
       if (spell) act({ type: 'buySpell', spellId: spell.id })
@@ -323,11 +413,12 @@ function playThrough(build: Build, seed: number) {
     if (s.events.some((e) => e.t === 'defeat')) deaths++
   }
 
-  for (let step = 0; step < 3000 && !s.cleared; step++) {
+  for (let step = 0; step < 6000 && (!s.cleared || s.cycle < cycles - 1); step++) {
+    if (s.cleared) act({ type: 'newCycle' })
     town()
     // 보스 레벨에 닿을 때까지는 사냥, 닿으면 보스 도전
     const region = REGIONS.filter((r) => isRegionOpen(s, r.id)).pop()!
-    const boss = monsterById(region.boss)
+    const boss = monsterById(region.boss, s.cycle)
     if (canChallengeBoss(s, region.id) && s.player.level >= boss.level) act({ type: 'challengeBoss', regionId: region.id })
     else act({ type: 'explore', regionId: region.id })
     if (s.pending) {
@@ -338,10 +429,19 @@ function playThrough(build: Build, seed: number) {
     }
     if (s.battle) fight()
   }
-  return { cleared: s.cleared, battles, deaths, level: s.player.level }
+  return { cleared: s.cleared, cycle: s.cycle, battles, deaths, level: s.player.level }
 }
 
 describe('전체 플레이 시뮬레이션', () => {
+  it('2회차도 엔딩까지 갈 수 있다', () => {
+    const runs = (['warrior', 'mage'] as const).map((build) => playThrough(build, 11, 2))
+    console.log('2회차', runs)
+    for (const r of runs) {
+      expect(r.cleared && r.cycle === 1).toBe(true)
+      expect(r.battles).toBeLessThan(900)
+    }
+  })
+
   for (const build of ['warrior', 'mage'] as const) {
     it(`${build} 빌드로 엔딩까지 갈 수 있다`, () => {
       const runs = [1, 2, 3, 4, 5].map((seed) => playThrough(build, seed))

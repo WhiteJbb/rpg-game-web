@@ -7,6 +7,8 @@ export interface Region {
   /** 일반 몬스터와 등장 가중치 */
   monsters: { id: string; weight: number }[]
   boss: string
+  /** 엔딩 이후에만 도전할 수 있는 숨은 보스 */
+  secretBoss?: string
   /** 보스에게 도전하려면 이 지역에서 쓰러뜨려야 하는 수 */
   killsForBoss: number
   /** 이 지역의 보스를 쓰러뜨려야 입장 가능 */
@@ -51,6 +53,7 @@ export const REGIONS: Region[] = [
     desc: '차가운 성 안에서 피 냄새가 진동한다...',
     monsters: [{ id: 'bat', weight: 50 }, { id: 'zombie', weight: 30 }, { id: 'gargoyle', weight: 20 }],
     boss: 'vampire-lord',
+    secretBoss: 'ancient-dragon',
     killsForBoss: 8,
     requires: 'elf-forest',
     drops: [{ id: 'hp-m', chance: 0.25 }, { id: 'hp-l', chance: 0.08 }, { id: 'mp', chance: 0.12 }],

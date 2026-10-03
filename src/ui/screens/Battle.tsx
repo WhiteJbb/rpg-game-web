@@ -29,7 +29,7 @@ const STATUS_NAME: Record<StatusKind, string> = { burn: '화상', chill: '빙결
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
-  const m = monsterById(monsterId)
+  const m = monsterById(monsterId, game.cycle)
   const p = game.player
   // 화면에 보이는 수치. 이벤트를 하나씩 연출하면서 따라간다.
   const [shown, setShown] = useState({ php: p.hp, pmp: p.mp, mhp: game.battle?.monsterHp ?? m.hp })

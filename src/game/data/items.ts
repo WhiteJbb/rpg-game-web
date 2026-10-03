@@ -65,6 +65,7 @@ export const EQUIPS: Equip[] = [
   { id: 'ogre-club', name: '오우거의 몽둥이', slot: 'weapon', str: 13, def: 0, int: 0, price: 0, dropFrom: 'ogre' },
   { id: 'wolf-pelt', name: '늑대왕의 가죽', slot: 'armor', str: 0, def: 13, int: 0, agi: 8, price: 0, dropFrom: 'werewolf' },
   { id: 'spirit-robe', name: '정령의 로브', slot: 'armor', str: 0, def: 22, int: 16, price: 0, dropFrom: 'elf-queen' },
+  { id: 'dragon-scale', name: '고룡의 비늘갑옷', slot: 'armor', str: 0, def: 46, int: 6, agi: 6, price: 0, dropFrom: 'ancient-dragon' },
   { id: 'vampire-sword', name: '흡혈귀의 검', slot: 'weapon', str: 38, def: 0, int: 8, crit: 10, price: 0, dropFrom: 'vampire-lord' },
 ]
 

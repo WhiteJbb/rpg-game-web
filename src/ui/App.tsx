@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BOSS_CLEAR, ENDING, INTRO } from '../game/data/story'
+import { BOSS_CLEAR, ENDING, INTRO, NEW_CYCLE, SECRET_CLEAR } from '../game/data/story'
 import { newGame, reduce } from '../game/engine'
 import { SAVE_KEY, deserialize, serialize } from '../game/save'
 import type { Action, GameState } from '../game/types'
@@ -90,6 +90,8 @@ export function App() {
       else if (e.t === 'encounter') sfx('encounter')
       else if (e.t === 'event') sfx('encounter')
       else if (e.t === 'eventResult') sfx(e.levelUps > 0 ? 'levelup' : e.hp < 0 ? 'hurt' : e.gold > 0 ? 'coin' : e.hp + e.mp > 0 ? 'heal' : 'click')
+      else if (e.t === 'upgraded') (say(`강화 성공! +${e.level}`), sfx('levelup'))
+      else if (e.t === 'respec') (say(`스텟 ${e.points}포인트를 돌려받았다.`), sfx('heal'))
       else if (e.t === 'questClaimed') (say('의뢰 완료! 보상을 받았다.'), sfx('victory'))
     }
     return next
@@ -101,10 +103,18 @@ export function App() {
   const afterBattle = (outcome: BattleOutcome, regionId: string) => {
     if (outcome.type === 'defeat') return setScreen({ n: 'town' })
     if (outcome.type === 'fled') (say('무사히 도망쳤다!'), sfx('dodge'))
+    if (outcome.type === 'victory' && outcome.victory.secretFirst)
+      return setScreen({ n: 'story', bg: regionId, lines: SECRET_CLEAR, next: { n: 'region', id: regionId } })
     const cleared = outcome.type === 'victory' ? outcome.victory.bossFirst : null
     if (!cleared) return setScreen({ n: 'region', id: regionId })
     const afterStory: Screen = game!.cleared ? { n: 'story', bg: 'ending', lines: ENDING, next: { n: 'ending' } } : { n: 'map' }
     setScreen({ n: 'story', bg: regionId, lines: BOSS_CLEAR[regionId], next: afterStory })
+  }
+
+  const startNewCycle = () => {
+    act({ type: 'newCycle' })
+    setShowChar(false)
+    setScreen({ n: 'story', bg: 'meadow', lines: NEW_CYCLE, next: { n: 'town' } })
   }
 
   if (screen.n === 'title' || !game) {
@@ -134,7 +144,7 @@ export function App() {
       )
       break
     case 'ending':
-      body = <Ending game={game} onContinue={() => setScreen({ n: 'town' })} />
+      body = <Ending game={game} onContinue={() => setScreen({ n: 'town' })} onNewCycle={startNewCycle} />
       break
     case 'town':
       body = <Town onEnter={(place) => setScreen(place === 'gate' ? { n: 'map' } : { n: 'place', place })} />
@@ -190,6 +200,13 @@ export function App() {
             setGame(null)
             setScreen({ n: 'title' })
           }}
+          onImport={(g) => {
+            setShowChar(false)
+            setGame(g)
+            setScreen({ n: 'town' })
+            say('세이브를 불러왔다!')
+          }}
+          onNewCycle={startNewCycle}
         />
       )}
       {showQuests && <Quests game={game} act={act} onClose={() => setShowQuests(false)} />}

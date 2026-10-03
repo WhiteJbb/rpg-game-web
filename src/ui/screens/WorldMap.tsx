@@ -38,7 +38,7 @@ export function WorldMap({ game, onRegion, onTown }: Props) {
               <span className="spot-pin">{open ? (done ? '★' : '●') : '🔒'}</span>
               <span className="sign">
                 {r.name}
-                <small>{open || !r.requires ? `Lv.${monsterById(r.monsters[0].id).level}~` : `${monsterById(regionById(r.requires).boss).name} 처치 시 개방`}</small>
+                <small>{open || !r.requires ? `Lv.${monsterById(r.monsters[0].id, game.cycle).level}~` : `${monsterById(regionById(r.requires).boss).name} 처치 시 개방`}</small>
               </span>
             </button>
           )

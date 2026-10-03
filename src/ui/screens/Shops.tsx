@@ -3,7 +3,7 @@ import { EQUIPS, POTIONS, SPELLS } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
-import { Gold, equipBonus } from '../common'
+import { Gold, equipBonus, equipName } from '../common'
 
 interface Props {
   game: GameState
@@ -79,13 +79,22 @@ export function EquipShop({ game, act, onBack }: Props) {
   return (
     <Shop bg="shop-equip" title="대장간" onBack={onBack}>
       {EQUIPS.filter((e) => !e.dropFrom || p.owned.includes(e.id)).map((e) => (
-        <Good key={e.id} id={e.id} name={e.name} fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} desc={`${e.slot === 'weapon' ? '무기' : '방어구'} · ${equipBonus(e)}`}>
-          {p[e.slot] === e.id ? (
-            <span className="owned">착용 중</span>
-          ) : p.owned.includes(e.id) ? (
-            <button className="btn btn-buy" onClick={() => act({ type: 'equip', equipId: e.id })}>
-              착용
-            </button>
+        <Good key={e.id} id={e.id} name={equipName(p, e)} fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} desc={`${e.slot === 'weapon' ? '무기' : '방어구'} · ${equipBonus(p, e)}${p[e.slot] === e.id ? ' · 착용 중' : ''}`}>
+          {p.owned.includes(e.id) ? (
+            <div className="good-actions">
+              {p[e.slot] !== e.id && (
+                <button className="btn btn-buy" onClick={() => act({ type: 'equip', equipId: e.id })}>
+                  착용
+                </button>
+              )}
+              {(p.upgrades[e.id] ?? 0) < R.MAX_UPGRADE ? (
+                <button className="btn btn-buy" disabled={p.gold < R.upgradeCost(p, e)} onClick={() => act({ type: 'upgradeEquip', equipId: e.id })}>
+                  강화 <Gold amount={R.upgradeCost(p, e)} />
+                </button>
+              ) : (
+                <span className="owned">최대 강화</span>
+              )}
+            </div>
           ) : (
             <BuyButton price={e.price} gold={p.gold} onClick={() => act({ type: 'buyEquip', equipId: e.id })} />
           )}

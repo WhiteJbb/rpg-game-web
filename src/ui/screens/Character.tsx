@@ -3,7 +3,8 @@ import { EQUIPS, POTIONS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
 import { Art } from '../art'
-import { Bar, Confirm, Modal, equipBonus } from '../common'
+import { Bar, Confirm, Gold, Modal, equipBonus, equipName } from '../common'
+import { SaveManager } from './SaveManager'
 
 const pct = (n: number) => `${Math.round(n * 100)}%`
 
@@ -21,29 +22,65 @@ interface Props {
   act: (a: Action) => GameState
   onClose: () => void
   onReset: () => void
+  onImport: (g: GameState) => void
+  onNewCycle: () => void
 }
 
-export function Character({ game, act, onClose, onReset }: Props) {
+const STEPS = [1, 5, 'all'] as const
+
+export function Character({ game, act, onClose, onReset, onImport, onNewCycle }: Props) {
   const p = game.player
   const owned = EQUIPS.filter((e) => p.owned.includes(e.id))
   const [resetting, setResetting] = useState(false)
+  const [step, setStep] = useState<(typeof STEPS)[number]>(1)
+  const [asking, setAsking] = useState<null | 'respec' | 'cycle' | 'save'>(null)
+  const amount = step === 'all' ? p.points : Math.min(step, p.points)
+  const spent = Object.values(p.stats).reduce((a, b) => a + b, 0) - 20
   if (resetting) return <Confirm text="정말 모든 진행을 지우고 처음으로 돌아갈까요?" yes="전부 지운다" onYes={onReset} onNo={() => setResetting(false)} />
   return (
-    <Modal title={`${p.name} · Lv.${p.level}`} onClose={onClose} wide>
+    <Modal title={`${p.name} · Lv.${p.level}${game.cycle > 0 ? ` · ${game.cycle + 1}회차` : ''}`} onClose={onClose} wide>
+      {asking === 'respec' && (
+        <Confirm
+          text={`${R.respecCost(p).toLocaleString()} 골드를 내고 찍은 스텟 ${spent}포인트를 전부 돌려받을까요?`}
+          yes="초기화"
+          onYes={() => (act({ type: 'respec' }), setAsking(null))}
+          onNo={() => setAsking(null)}
+        />
+      )}
+      {asking === 'cycle' && (
+        <Confirm
+          text="레벨·스텟·장비·골드는 그대로 두고 세계를 처음으로 되돌립니다. 몬스터가 훨씬 강해지고, 지역과 의뢰 진행은 초기화됩니다."
+          yes="다음 회차로"
+          onYes={onNewCycle}
+          onNo={() => setAsking(null)}
+        />
+      )}
+      {asking === 'save' && <SaveManager game={game} onImport={onImport} onClose={() => setAsking(null)} />}
       <div className="char">
         <div className="char-left">
           <Art kind="characters" id="hero" alt={p.name} className="char-art" fallback="🧑‍🌾" />
           <Bar kind="exp" label="EXP" value={p.exp} max={R.expToNext(p.level)} />
           <p className="char-gear">
-            무기: {p.weapon ? equipById(p.weapon).name : '없음'}
+            무기: {p.weapon ? equipName(p, equipById(p.weapon)) : '없음'}
             <br />
-            방어구: {p.armor ? equipById(p.armor).name : '없음'}
+            방어구: {p.armor ? equipName(p, equipById(p.armor)) : '없음'}
           </p>
         </div>
         <div className="char-right">
           <h3>
             스텟 <small>남은 포인트 {p.points}</small>
           </h3>
+          <div className="stat-tools">
+            <span>한 번에</span>
+            {STEPS.map((st) => (
+              <button key={st} className={`btn btn-small ${step === st ? 'btn-primary' : ''}`} aria-pressed={step === st} onClick={() => setStep(st)}>
+                {st === 'all' ? '전부' : `+${st}`}
+              </button>
+            ))}
+            <button className="btn btn-small stat-respec" disabled={spent <= 0 || p.gold < R.respecCost(p)} onClick={() => setAsking('respec')}>
+              초기화 <Gold amount={R.respecCost(p)} />
+            </button>
+          </div>
           <ul className="stats">
             {STATS.map((st) => (
               <li key={st.key}>
@@ -53,7 +90,7 @@ export function Character({ game, act, onClose, onReset }: Props) {
                   {R.totalStat(p, st.key) !== p.stats[st.key] && <em> +{R.totalStat(p, st.key) - p.stats[st.key]}</em>}
                 </span>
                 <small>{st.effect(game)}</small>
-                <button className="btn btn-plus" disabled={p.points < 1} aria-label={`${st.name} 올리기`} onClick={() => act({ type: 'allocate', stat: st.key, amount: 1 })}>
+                <button className="btn btn-plus" disabled={p.points < 1} aria-label={`${st.name} 올리기`} onClick={() => act({ type: 'allocate', stat: st.key, amount })}>
                   +
                 </button>
               </li>
@@ -77,9 +114,9 @@ export function Character({ game, act, onClose, onReset }: Props) {
               <button key={e.id} className="btn btn-item" disabled={p[e.slot] === e.id} onClick={() => act({ type: 'equip', equipId: e.id })}>
                 <Art kind="items" id={e.id} alt="" className="icon" fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} />
                 <span className="item-text">
-                  {e.name}
+                  {equipName(p, e)}
                   <small>
-                    {equipBonus(e)}
+                    {equipBonus(p, e)}
                     {p[e.slot] === e.id && ' · 착용 중'}
                   </small>
                 </span>
@@ -104,9 +141,19 @@ export function Character({ game, act, onClose, onReset }: Props) {
         </div>
       </div>
       <div className="row char-foot">
-        <button className="btn btn-small btn-danger" onClick={() => setResetting(true)}>
-          처음부터 다시
-        </button>
+        <div className="row">
+          <button className="btn btn-small btn-danger" onClick={() => setResetting(true)}>
+            처음부터 다시
+          </button>
+          <button className="btn btn-small" onClick={() => setAsking('save')}>
+            세이브 옮기기
+          </button>
+          {game.cleared && (
+            <button className="btn btn-small" onClick={() => setAsking('cycle')}>
+              {game.cycle + 2}회차 시작
+            </button>
+          )}
+        </div>
         <button className="btn btn-primary" onClick={onClose}>
           닫기
         </button>

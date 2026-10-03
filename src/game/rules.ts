@@ -1,8 +1,8 @@
-import { equipById } from './data/items'
+import { equipById, type Equip } from './data/items'
 import type { Player, StatKey } from './types'
 
 export const POINTS_PER_LEVEL = 4
-export const MAX_LEVEL = 50
+export const MAX_LEVEL = 99
 export const CRIT_MULT = 1.75
 export const DEFEND_MULT = 0.4
 export const CHARGE_MULT = 2.4
@@ -20,10 +20,19 @@ export const PIERCE_RES = 0.3
 export const expToNext = (level: number) => Math.round(18 * Math.pow(level, 1.7))
 export const maxHp = (p: Player) => 100 + (p.level - 1) * 18
 
+export const MAX_UPGRADE = 10
+export const UPGRADE_BONUS = 0.15 // 강화 1단계당 장비 수치 증가율
+
+/** 강화가 반영된 장비 수치 */
+export const equipStat = (p: Player, e: Equip, stat: StatKey) => Math.round((e[stat] ?? 0) * (1 + UPGRADE_BONUS * (p.upgrades[e.id] ?? 0)))
+
+/** 다음 강화 단계의 비용. 보스 장비는 상점가가 없어 고정 기준가를 쓴다. */
+export const upgradeCost = (p: Player, e: Equip) => Math.max(50, Math.round((e.dropFrom ? 2500 : e.price) * 0.5 * ((p.upgrades[e.id] ?? 0) + 1)))
+
 /** 기본 스텟 + 착용 장비 보너스 */
 export function totalStat(p: Player, stat: StatKey): number {
   let v = p.stats[stat]
-  for (const id of [p.weapon, p.armor]) if (id) v += equipById(id)[stat] ?? 0
+  for (const id of [p.weapon, p.armor]) if (id) v += equipStat(p, equipById(id), stat)
   return v
 }
 
@@ -44,6 +53,7 @@ export const slotRefundChance = (p: Player) => Math.min(0.1, totalStat(p, 'luck'
 export const mitigate = (raw: number, def: number) => Math.max(1, Math.round((raw * raw) / (raw + def)))
 
 export const restCost = (p: Player) => p.level * 6
+export const respecCost = (p: Player) => p.level * 40
 
 /** 슬롯머신 배당 (베팅액 배수). 기대값은 운 환급을 포함해도 1 미만이다. */
 export function slotMultiplier(reels: [number, number, number]): number {
