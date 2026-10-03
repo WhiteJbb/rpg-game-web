@@ -1,5 +1,6 @@
 import { MONSTERS } from './data/monsters'
 import { REGIONS } from './data/regions'
+import { maxHp, maxMp } from './rules'
 import type { GameState } from './types'
 
 export const SAVE_KEY = 'planet-earth-save'
@@ -22,6 +23,8 @@ export function deserialize(raw: string | null): GameState | null {
     // 진행 중이던 전투가 알 수 없는 상태면 전투만 버린다
     const b = s.battle
     const battle = b && MONSTERS.some((m) => m.id === b.monsterId) && REGIONS.some((r) => r.id === b.regionId) && isNum(b.monsterHp) ? b : null
+    p.hp = Math.max(1, Math.min(p.hp, maxHp(p)))
+    p.mp = Math.max(0, Math.min(p.mp, maxMp(p)))
     return { ...s, battle, events: [], cleared: Boolean(s.cleared) }
   } catch {
     return null

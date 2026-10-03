@@ -114,6 +114,7 @@ export function Inn({ game, act, onBack }: Props) {
         <button className="btn btn-primary btn-big" disabled={full || p.gold < R.restCost(p)} onClick={() => act({ type: 'rest' })}>
           {full ? '이미 쌩쌩하다' : '쉬어 가기'} {!full && <Gold amount={R.restCost(p)} />}
         </button>
+        {!full && p.gold < R.restCost(p) && <p className="hint">골드가 모자란다... 몬스터를 잡아 벌어 오자.</p>}
       </div>
     </Scene>
   )

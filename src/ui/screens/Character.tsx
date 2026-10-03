@@ -70,7 +70,9 @@ export function Character({ game, act, onClose, onReset }: Props) {
               <button key={e.id} className="btn btn-item" disabled={p[e.slot] === e.id} onClick={() => act({ type: 'equip', equipId: e.id })}>
                 <Art kind="items" id={e.id} alt="" className="icon" fallback={e.slot === 'weapon' ? '🗡️' : '🛡️'} />
                 {e.name}
-                <small>{p[e.slot] === e.id ? '착용 중' : '착용'}</small>
+                <small>
+                  {[e.str && `힘+${e.str}`, e.def && `방어+${e.def}`, e.int && `지력+${e.int}`].filter(Boolean).join(' ')} · {p[e.slot] === e.id ? '착용 중' : '착용'}
+                </small>
               </button>
             ))}
           </div>

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import * as R from '../game/rules'
 import type { Player } from '../game/types'
 import { Art } from './art'
@@ -54,9 +54,20 @@ export function Hud({ player, onCharacter }: { player: Player; onCharacter?: () 
 }
 
 export function Modal({ title, onClose, children, wide }: { title?: string; onClose?: () => void; children: ReactNode; wide?: boolean }) {
+  useEffect(() => {
+    if (!onClose) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className={`panel modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        {onClose && (
+          <button className="btn modal-close" aria-label="닫기" onClick={onClose}>
+            ✕
+          </button>
+        )}
         {title && <h2>{title}</h2>}
         {children}
       </div>

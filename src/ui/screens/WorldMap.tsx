@@ -1,5 +1,5 @@
 import { monsterById } from '../../game/data/monsters'
-import { REGIONS } from '../../game/data/regions'
+import { REGIONS, regionById } from '../../game/data/regions'
 import { isRegionOpen } from '../../game/engine'
 import type { GameState } from '../../game/types'
 import { artUrl } from '../art'
@@ -38,7 +38,7 @@ export function WorldMap({ game, onRegion, onTown }: Props) {
               <span className="spot-pin">{open ? (done ? '★' : '●') : '🔒'}</span>
               <span className="sign">
                 {r.name}
-                <small>Lv.{monsterById(r.monsters[0].id).level}~</small>
+                <small>{open || !r.requires ? `Lv.${monsterById(r.monsters[0].id).level}~` : `${monsterById(regionById(r.requires).boss).name} 처치 시 개방`}</small>
               </span>
             </button>
           )

@@ -33,7 +33,9 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   const [busy, setBusy] = useState(false)
   const [fx, setFx] = useState<Fx | null>(null)
   const [anim, setAnim] = useState<'' | 'monster-hit' | 'monster-lunge' | 'monster-dead' | 'spell'>('')
-  const [caption, setCaption] = useState(`${josa(m.name, '이', '가')} 나타났다!`)
+  const [caption, setCaption] = useState(
+    game.battle?.charging ? `${josa(m.name, '이', '가')} 힘을 모으고 있다... (${game.battle.charging})` : `${josa(m.name, '이', '가')} 나타났다!`,
+  )
   const [charging, setCharging] = useState(game.battle?.charging ?? null)
   const [menu, setMenu] = useState<null | 'spell' | 'potion'>(null)
   const [result, setResult] = useState<Extract<GameEvent, { t: 'victory' | 'defeat' }> | null>(null)
@@ -142,8 +144,9 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
             <strong>
               {p.name} <span className="lv">Lv.{p.level}</span>
             </strong>
-            <Bar kind="hp" label="HP" value={shown.php} max={R.maxHp(p)} />
-            <Bar kind="mp" label="MP" value={shown.pmp} max={R.maxMp(p)} />
+            {/* 결과가 나온 뒤에는 실제 값(레벨업 회복 포함)을 보여준다 */}
+            <Bar kind="hp" label="HP" value={result?.t === 'victory' ? p.hp : shown.php} max={R.maxHp(p)} />
+            <Bar kind="mp" label="MP" value={result?.t === 'victory' ? p.mp : shown.pmp} max={R.maxMp(p)} />
             {fx?.target === 'player' && (
               <span key={fx.key} className={`pop pop-${fx.kind}`}>
                 {fx.text}
@@ -176,7 +179,9 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
                 <button key={sp.id} className="btn btn-item" disabled={locked || shown.pmp < sp.mp} onClick={() => run({ type: 'cast', spellId: sp.id })}>
                   <Art kind="items" id={sp.id} alt="" className="icon" fallback="✨" />
                   {sp.name}
-                  <small>MP {sp.mp}</small>
+                  <small>
+                    위력 {sp.power} · MP {sp.mp}
+                  </small>
                 </button>
               ))}
               <button className="btn" onClick={() => setMenu(null)}>
