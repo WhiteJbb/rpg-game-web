@@ -205,6 +205,12 @@ input {
 .spot-locked .spot-pin { background: #666; animation: none; }
 .spot .sign { margin-top: 0; font-size: 0.9rem; }
 @media (max-width: 560px) {
+  /* 좁은 화면에서는 HUD를 두 줄로: 이름·골드·버튼 / 게이지 */
+  .hud { flex-wrap: wrap; gap: 4px 8px; }
+  .hud-id { flex: 1; flex-direction: row; gap: 6px; align-items: baseline; }
+  .hud-bars { order: 9; flex-basis: 100%; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .scene { padding-top: 104px; }
+  .battle-scene { padding-top: 12px; }
   .spot .sign { font-size: 0.72rem; padding: 2px 6px; }
   .spot-pin { width: 32px; height: 32px; font-size: 0.9rem; }
 }
@@ -290,6 +296,30 @@ input {
   .actions .btn-primary { grid-column: span 4; }
   .actions-list { grid-template-columns: repeat(2, 1fr); }
   .enemy-art { max-height: 38vh; }
+}
+
+/* ---------- 상태 이상 ---------- */
+.statuses { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+.status { font-family: var(--title-font); font-size: 0.75rem; color: #fff; border-radius: 6px; padding: 1px 6px; margin-left: 4px; }
+.status-burn { background: #e2622b; }
+.status-chill { background: #3d8fc9; }
+.status-stun { background: #b08a1e; }
+.status-poison { background: #7a4aa8; }
+
+/* ---------- 사건 · 의뢰 ---------- */
+.event-art { width: min(220px, 50vw); max-height: 30vh; aspect-ratio: 1; margin: 0 auto 8px; }
+.event-art.art-missing { font-size: 5rem; }
+.choices { display: grid; gap: 8px; }
+.rewards .loss { color: var(--accent-dark); }
+.quests { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.quest { display: flex; align-items: center; gap: 12px; background: #fff8ea; border: 2px solid var(--paper-dark); border-radius: 12px; padding: 8px 10px; }
+.quest-info { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.quest-reward { display: flex; flex-direction: column; align-items: flex-end; font-size: 0.85rem; font-family: var(--title-font); white-space: nowrap; }
+.quest-claimed { opacity: 0.55; }
+@media (max-width: 560px) {
+  .quest { flex-wrap: wrap; }
+  .quest-info { flex-basis: 100%; }
+  .quest-reward { flex-direction: row; gap: 8px; flex: 1; justify-content: flex-start; }
 }
 
 /* ---------- 모달 ---------- */

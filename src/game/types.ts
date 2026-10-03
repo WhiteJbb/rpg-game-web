@@ -30,6 +30,23 @@ export interface Battle {
   monsterHp: number
   /** 몬스터가 힘을 모으는 중 — 다음 턴에 강한 공격이 온다 */
   charging: string | null
+  /** 몬스터 화상: 매 턴 피해 */
+  burn: { turns: number; dmg: number } | null
+  /** 몬스터 빙결: 남은 턴 동안 공격이 약해진다 */
+  chill: number
+  /** 몬스터 기절: 다음 턴을 쉰다 */
+  stunned: boolean
+  /** 플레이어 중독: 남은 턴 */
+  poison: number
+  /** 이번 전투에서 피해를 입었는가 (무피해 퀘스트용) */
+  damaged: boolean
+}
+
+export type StatusKind = 'burn' | 'chill' | 'stun' | 'poison'
+
+export interface QuestState {
+  progress: number
+  claimed: boolean
 }
 
 export interface Victory {
@@ -39,13 +56,20 @@ export interface Victory {
   levelUps: number
   /** 보스를 처음 쓰러뜨렸을 때의 지역 id */
   bossFirst: string | null
+  /** 보스가 떨어뜨린 전용 장비 */
+  equipDrop: string | null
 }
 
 /** 한 번의 액션으로 일어난 일. UI가 순서대로 연출한다. */
 export type GameEvent =
   | { t: 'encounter'; monsterId: string }
-  | { t: 'treasure'; gold: number }
-  | { t: 'spring'; hp: number; mp: number }
+  | { t: 'event'; eventId: string }
+  | { t: 'eventResult'; text: string; gold: number; hp: number; mp: number; exp: number; potion: PotionId | null; levelUps: number }
+  | { t: 'status'; target: 'monster' | 'player'; kind: StatusKind }
+  | { t: 'burnTick'; dmg: number; monsterHp: number }
+  | { t: 'poisonTick'; dmg: number; playerHp: number }
+  | { t: 'monsterStunned' }
+  | { t: 'questClaimed'; id: string }
   | { t: 'playerAttack'; dmg: number; crit: boolean; monsterHp: number }
   | { t: 'playerSpell'; spellId: string; dmg: number; monsterHp: number; mp: number }
   | { t: 'playerDefend'; mp: number }
@@ -66,6 +90,10 @@ export interface GameState {
   player: Player
   progress: Record<string, RegionProgress>
   battle: Battle | null
+  /** 탐색 중 만난 사건. 선택을 해야 다음으로 넘어간다. */
+  pending: { eventId: string; regionId: string } | null
+  quests: Record<string, QuestState>
+  record: { wins: number; defeats: number }
   events: GameEvent[]
   cleared: boolean
 }
@@ -85,3 +113,5 @@ export type Action =
   | { type: 'allocate'; stat: StatKey; amount: number }
   | { type: 'rest' }
   | { type: 'slot'; bet: number }
+  | { type: 'choose'; index: number }
+  | { type: 'claimQuest'; questId: string }

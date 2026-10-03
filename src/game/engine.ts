@@ -1,8 +1,10 @@
-import { equipById, potionById, spellById } from './data/items'
+import { EVENTS, eventById, type Choice } from './data/events'
+import { EQUIPS, equipById, equipWorth, potionById, spellById } from './data/items'
 import { monsterById, type Monster, type Special } from './data/monsters'
+import { QUESTS, questById, questTarget } from './data/quests'
 import { REGIONS, regionById } from './data/regions'
 import * as R from './rules'
-import type { Action, GameEvent, GameState, Player, PotionId, Rng } from './types'
+import type { Action, Battle, GameEvent, GameState, Player, PotionId, Rng } from './types'
 
 export function newGame(name: string): GameState {
   const player: Player = {
@@ -27,9 +29,17 @@ export function newGame(name: string): GameState {
     player,
     progress: Object.fromEntries(REGIONS.map((r) => [r.id, { kills: 0, bossDefeated: false }])),
     battle: null,
+    pending: null,
+    quests: Object.fromEntries(QUESTS.map((q) => [q.id, { progress: 0, claimed: false }])),
+    record: { wins: 0, defeats: 0 },
     events: [],
     cleared: false,
   }
+}
+
+export const newBattle = (monsterId: string, regionId: string): Battle => {
+  const m = monsterById(monsterId)
+  return { monsterId, regionId, isBoss: m.boss, monsterHp: m.hp, charging: null, burn: null, chill: 0, stunned: false, poison: 0, damaged: false }
 }
 
 export const isRegionOpen = (s: GameState, regionId: string) => {
@@ -39,6 +49,17 @@ export const isRegionOpen = (s: GameState, regionId: string) => {
 
 export const canChallengeBoss = (s: GameState, regionId: string) =>
   isRegionOpen(s, regionId) && s.progress[regionId].kills >= regionById(regionId).killsForBoss
+
+export const isQuestVisible = (s: GameState, questId: string) => {
+  const regionId = questById(questId).regionId
+  return regionId === null || isRegionOpen(s, regionId)
+}
+
+export const isQuestDone = (s: GameState, questId: string) => s.quests[questId].progress >= questTarget(questById(questId))
+
+/** 사건 선택지의 골드 비용 (지역 기준 골드 × 배수) */
+export const choiceGoldCost = (regionId: string, choice: Choice) =>
+  Math.round(monsterById(regionById(regionId).monsters[0].id).gold * (choice.cost?.gold ?? 0))
 
 const between = (rng: Rng, lo: number, hi: number) => lo + rng() * (hi - lo)
 
@@ -60,14 +81,14 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
   const fail = (text: string) => (emit({ t: 'error', text }), s)
   const inBattle = s.battle !== null
 
+  if (s.pending && action.type !== 'choose') return fail('눈앞의 일부터 정해야 한다')
   const battleOnly = ['attack', 'cast', 'defend', 'flee']
   if (battleOnly.includes(action.type) && !inBattle) return fail('전투 중이 아닙니다')
   if (inBattle && !battleOnly.includes(action.type) && action.type !== 'usePotion')
     return fail('전투 중에는 할 수 없습니다')
 
   const startBattle = (monsterId: string, regionId: string) => {
-    const m = monsterById(monsterId)
-    s.battle = { monsterId, regionId, isBoss: m.boss, monsterHp: m.hp, charging: null }
+    s.battle = newBattle(monsterId, regionId)
     emit({ t: 'encounter', monsterId })
   }
 
@@ -81,27 +102,64 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
     case 'explore': {
       if (!isRegionOpen(s, action.regionId)) return fail('아직 갈 수 없는 지역입니다')
       const region = regionById(action.regionId)
-      const roll = rng()
-      if (roll < 0.07) {
-        const gold = Math.round(monsterById(region.monsters[0].id).gold * between(rng, 2, 4) * R.goldBonus(p))
-        p.gold += gold
-        emit({ t: 'treasure', gold })
-      } else if (roll < 0.12 && (p.hp < R.maxHp(p) || p.mp < R.maxMp(p))) {
-        // 샘물은 회복할 것이 있을 때만 나온다
-        const hp = Math.min(R.maxHp(p) - p.hp, Math.round(R.maxHp(p) * 0.3))
-        const mp = Math.min(R.maxMp(p) - p.mp, Math.round(R.maxMp(p) * 0.3))
-        p.hp += hp
-        p.mp += mp
-        emit({ t: 'spring', hp, mp })
+      if (rng() < R.EVENT_CHANCE) {
+        const hurt = p.hp < R.maxHp(p) || p.mp < R.maxMp(p)
+        const pool = EVENTS.filter((e) => hurt || !e.onlyWhenHurt)
+        const ev = pool[Math.floor(rng() * pool.length)]
+        s.pending = { eventId: ev.id, regionId: region.id }
+        emit({ t: 'event', eventId: ev.id })
       } else {
         startBattle(pickWeighted(rng, region.monsters).id, region.id)
       }
       return s
     }
 
+    case 'choose': {
+      if (!s.pending) return fail('선택할 일이 없습니다')
+      const { eventId, regionId } = s.pending
+      const region = regionById(regionId)
+      const choice = eventById(eventId).choices[action.index]
+      if (!choice) return fail('고를 수 없는 선택지입니다')
+      const base = monsterById(region.monsters[0].id)
+      const potionCost = choice.cost?.potion
+      if (potionCost && p.potions[potionCost] < 1) return fail(`${potionById(potionCost).name}이 없습니다`)
+      if (!spend(choiceGoldCost(regionId, choice))) return fail('골드가 부족합니다')
+      if (potionCost) p.potions[potionCost]--
+
+      const o = pickWeighted(rng, choice.outcomes)
+      const gold = Math.round(base.gold * (o.gold ?? 0) * R.goldBonus(p))
+      const exp = Math.round(base.exp * (o.exp ?? 0))
+      // 사건으로는 쓰러지지 않는다 (HP 1은 남는다)
+      const hp = Math.max(1 - p.hp, Math.min(R.maxHp(p) - p.hp, Math.round(R.maxHp(p) * (o.hp ?? 0))))
+      const mp = Math.max(-p.mp, Math.min(R.maxMp(p) - p.mp, Math.round(R.maxMp(p) * (o.mp ?? 0))))
+      p.gold += gold
+      p.hp += hp
+      p.mp += mp
+      if (o.potion) p.potions[o.potion]++
+      const levelUps = gainExp(p, exp)
+      s.pending = null
+      emit({ t: 'eventResult', text: o.text, gold, hp, mp, exp, potion: o.potion ?? null, levelUps })
+      if (o.ambush) startBattle(pickWeighted(rng, region.monsters).id, region.id)
+      return s
+    }
+
     case 'challengeBoss': {
       if (!canChallengeBoss(s, action.regionId)) return fail('아직 보스에게 도전할 수 없습니다')
       startBattle(regionById(action.regionId).boss, action.regionId)
+      return s
+    }
+
+    case 'claimQuest': {
+      const quest = QUESTS.find((q) => q.id === action.questId)
+      if (!quest || !isQuestVisible(s, quest.id)) return fail('받을 수 없는 의뢰입니다')
+      const state = s.quests[quest.id]
+      if (state.claimed) return fail('이미 보상을 받았습니다')
+      if (!isQuestDone(s, quest.id)) return fail('아직 완료하지 못했습니다')
+      state.claimed = true
+      p.gold += quest.reward.gold
+      p.points += quest.reward.points ?? 0
+      if (quest.reward.potion) p.potions[quest.reward.potion]++
+      emit({ t: 'questClaimed', id: quest.id })
       return s
     }
 
@@ -124,13 +182,10 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
 
     case 'buyEquip': {
       const eq = equipById(action.equipId)
+      if (eq.dropFrom) return fail('상점에서 팔지 않는 장비입니다')
       if (p.owned.includes(eq.id)) return fail('이미 가지고 있습니다')
       if (!spend(eq.price)) return fail('골드가 부족합니다')
-      p.owned.push(eq.id)
-      // 지금 장비보다 좋을 때만 자동 착용
-      const worth = (id: string | null) => (id ? equipById(id).str + equipById(id).def + equipById(id).int : -1)
-      if (worth(eq.id) > worth(p[eq.slot])) p[eq.slot] = eq.id
-      clampVitals(p)
+      obtainEquip(p, eq.id)
       emit({ t: 'bought', id: eq.id })
       return s
     }
@@ -184,7 +239,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       p.hp += hp
       p.mp += mp
       emit({ t: 'potion', potionId: potion.id, hp, mp })
-      if (inBattle) monsterTurn(s, rng, false)
+      if (inBattle) enemyPhase(s, rng, false)
       return s
     }
 
@@ -197,7 +252,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       b.monsterHp -= dmg
       emit({ t: 'playerAttack', dmg, crit, monsterHp: b.monsterHp })
       if (b.monsterHp <= 0) win(s, m, rng)
-      else monsterTurn(s, rng, false)
+      else enemyPhase(s, rng, false)
       return s
     }
 
@@ -209,11 +264,23 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       if (p.mp < spell.mp) return fail('MP가 부족합니다')
       p.mp -= spell.mp
       const raw = R.spellPower(p, spell.power) * between(rng, 0.9, 1.1)
-      const dmg = Math.min(b.monsterHp, R.mitigate(raw, m.res))
+      const res = spell.effect === 'pierce' ? m.res * R.PIERCE_RES : m.res
+      const dmg = Math.min(b.monsterHp, R.mitigate(raw, res))
       b.monsterHp -= dmg
       emit({ t: 'playerSpell', spellId: spell.id, dmg, monsterHp: b.monsterHp, mp: p.mp })
-      if (b.monsterHp <= 0) win(s, m, rng)
-      else monsterTurn(s, rng, false)
+      if (b.monsterHp <= 0) {
+        win(s, m, rng)
+        return s
+      }
+      // 보스는 기절에 잘 걸리지 않는다
+      const chance = spell.effect === 'stun' && m.boss ? spell.chance / 2 : spell.chance
+      if (spell.effect !== 'pierce' && rng() < chance) {
+        if (spell.effect === 'burn') b.burn = { turns: R.BURN_TURNS, dmg: Math.max(1, Math.round(dmg * R.BURN_RATIO)) }
+        else if (spell.effect === 'chill') b.chill = R.CHILL_TURNS
+        else b.stunned = true
+        emit({ t: 'status', target: 'monster', kind: spell.effect })
+      }
+      enemyPhase(s, rng, false)
       return s
     }
 
@@ -221,7 +288,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const mp = Math.min(R.maxMp(p) - p.mp, Math.round(R.maxMp(p) * 0.1))
       p.mp += mp
       emit({ t: 'playerDefend', mp })
-      monsterTurn(s, rng, true)
+      enemyPhase(s, rng, true)
       return s
     }
 
@@ -232,7 +299,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
         emit({ t: 'fled' })
       } else {
         emit({ t: 'fleeFail' })
-        monsterTurn(s, rng, false)
+        enemyPhase(s, rng, false)
       }
       return s
     }
@@ -245,76 +312,18 @@ function clampVitals(p: Player) {
   p.mp = Math.min(p.mp, R.maxMp(p))
 }
 
-function monsterTurn(s: GameState, rng: Rng, defending: boolean) {
-  const b = s.battle!
-  const p = s.player
-  const m = monsterById(b.monsterId)
-
-  /** 한 번 때린다. 플레이어가 쓰러지면 true */
-  const hit = (mult: number, skill: string | null, opts: { canDodge?: boolean; drain?: boolean } = {}) => {
-    const dodged = (opts.canDodge ?? true) && rng() < R.dodgeChance(p)
-    let dmg = 0
-    if (!dodged) {
-      const raw = m.atk * mult * between(rng, 0.9, 1.1)
-      dmg = Math.min(p.hp, Math.max(1, Math.round(R.mitigate(raw, R.defensePower(p)) * (defending ? R.DEFEND_MULT : 1))))
-      p.hp -= dmg
-      if (opts.drain) b.monsterHp = Math.min(m.hp, b.monsterHp + dmg)
-    }
-    s.events.push({ t: 'monsterAttack', skill, dmg, dodged, playerHp: p.hp, monsterHp: b.monsterHp })
-    return p.hp <= 0
-  }
-
-  let dead: boolean
-  if (b.charging) {
-    // 모았던 힘을 터뜨린다. 회피할 수 없고, 방어로만 줄일 수 있다.
-    const skill = b.charging
-    b.charging = null
-    dead = hit(R.CHARGE_MULT, skill, { canDodge: false })
-  } else {
-    const special = rollSpecial(m, rng)
-    if (!special) dead = hit(1, null)
-    else if (special.kind === 'charge') {
-      b.charging = special.name
-      s.events.push({ t: 'monsterCharge', skill: special.name })
-      dead = false
-    } else if (special.kind === 'heavy') dead = hit(1.6, special.name)
-    else if (special.kind === 'drain') dead = hit(1, special.name, { drain: true })
-    else dead = hit(0.7, special.name) || hit(0.7, special.name)
-  }
-
-  if (dead) {
-    const goldLost = Math.floor(p.gold * R.DEATH_GOLD_LOSS)
-    p.gold -= goldLost
-    p.hp = R.maxHp(p)
-    p.mp = R.maxMp(p)
-    s.battle = null
-    s.events.push({ t: 'defeat', goldLost })
-  }
+/** 장비를 얻는다. 지금 장비보다 좋을 때만 자동 착용. */
+function obtainEquip(p: Player, id: string) {
+  const eq = equipById(id)
+  p.owned.push(id)
+  const current = p[eq.slot]
+  if (!current || equipWorth(eq) > equipWorth(equipById(current))) p[eq.slot] = id
+  clampVitals(p)
 }
 
-function rollSpecial(m: Monster, rng: Rng): Special | null {
-  for (const sp of m.specials) if (rng() < sp.chance) return sp
-  return null
-}
-
-function win(s: GameState, m: Monster, rng: Rng) {
-  const p = s.player
-  const b = s.battle!
-  const region = regionById(b.regionId)
-  const progress = s.progress[region.id]
-
-  const gold = Math.round(m.gold * between(rng, 0.8, 1.2) * R.goldBonus(p))
-  p.gold += gold
-  p.exp += m.exp
-
-  const drops: PotionId[] = []
-  for (const d of region.drops) {
-    if (rng() < d.chance * R.dropBonus(p) * (m.boss ? 3 : 1)) {
-      p.potions[d.id]++
-      drops.push(d.id)
-    }
-  }
-
+/** 경험치를 얻고 오른 레벨 수를 돌려준다. 레벨이 오르면 전부 회복. */
+function gainExp(p: Player, exp: number): number {
+  p.exp += exp
   let levelUps = 0
   while (p.level < R.MAX_LEVEL && p.exp >= R.expToNext(p.level)) {
     p.exp -= R.expToNext(p.level)
@@ -325,21 +334,163 @@ function win(s: GameState, m: Monster, rng: Rng) {
   if (levelUps > 0) {
     p.hp = R.maxHp(p)
     p.mp = R.maxMp(p)
-  } else {
-    p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * 0.15))
+  }
+  return levelUps
+}
+
+/** 플레이어 행동 뒤의 적 차례: 화상 → (기절이 아니면) 몬스터 행동 → 독 */
+function enemyPhase(s: GameState, rng: Rng, defending: boolean) {
+  const b = s.battle!
+  const p = s.player
+  const m = monsterById(b.monsterId)
+
+  if (b.burn) {
+    const dmg = Math.min(b.monsterHp, b.burn.dmg)
+    b.monsterHp -= dmg
+    if (--b.burn.turns <= 0) b.burn = null
+    s.events.push({ t: 'burnTick', dmg, monsterHp: b.monsterHp })
+    if (b.monsterHp <= 0) return win(s, m, rng)
   }
 
+  if (b.stunned) {
+    b.stunned = false
+    s.events.push({ t: 'monsterStunned' })
+  } else if (monsterAct(s, m, rng, defending)) {
+    return lose(s)
+  }
+
+  if (b.poison > 0) {
+    b.poison--
+    // 독으로는 쓰러지지 않는다
+    const dmg = Math.min(p.hp - 1, Math.round(R.maxHp(p) * R.POISON_RATIO))
+    if (dmg > 0) {
+      p.hp -= dmg
+      b.damaged = true
+      s.events.push({ t: 'poisonTick', dmg, playerHp: p.hp })
+    }
+  }
+}
+
+/** 몬스터가 행동한다. 플레이어가 쓰러지면 true */
+function monsterAct(s: GameState, m: Monster, rng: Rng, defending: boolean): boolean {
+  const b = s.battle!
+  const p = s.player
+  const weaken = b.chill > 0 ? R.CHILL_MULT : 1
+  if (b.chill > 0) b.chill--
+
+  const hit = (mult: number, skill: string | null, opts: { canDodge?: boolean; drain?: boolean } = {}) => {
+    const dodged = (opts.canDodge ?? true) && rng() < R.dodgeChance(p)
+    let dmg = 0
+    if (!dodged) {
+      const raw = m.atk * mult * weaken * between(rng, 0.9, 1.1)
+      dmg = Math.min(p.hp, Math.max(1, Math.round(R.mitigate(raw, R.defensePower(p)) * (defending ? R.DEFEND_MULT : 1))))
+      p.hp -= dmg
+      b.damaged = true
+      if (opts.drain) b.monsterHp = Math.min(m.hp, b.monsterHp + dmg)
+    }
+    s.events.push({ t: 'monsterAttack', skill, dmg, dodged, playerHp: p.hp, monsterHp: b.monsterHp })
+    return { dead: p.hp <= 0, landed: !dodged }
+  }
+
+  if (b.charging) {
+    // 모았던 힘을 터뜨린다. 회피할 수 없고, 방어로만 줄일 수 있다.
+    const skill = b.charging
+    b.charging = null
+    return hit(R.CHARGE_MULT, skill, { canDodge: false }).dead
+  }
+
+  const special = rollSpecial(m, rng)
+  if (!special) return hit(1, null).dead
+  switch (special.kind) {
+    case 'charge':
+      b.charging = special.name
+      s.events.push({ t: 'monsterCharge', skill: special.name })
+      return false
+    case 'heavy':
+      return hit(1.6, special.name).dead
+    case 'drain':
+      return hit(1, special.name, { drain: true }).dead
+    case 'double':
+      return hit(0.7, special.name).dead || hit(0.7, special.name).dead
+    case 'poison': {
+      const r = hit(1, special.name)
+      if (r.landed && !r.dead) {
+        b.poison = R.POISON_TURNS
+        s.events.push({ t: 'status', target: 'player', kind: 'poison' })
+      }
+      return r.dead
+    }
+    case 'stun': {
+      // 기절한 플레이어는 한 턴을 잃는다: 몬스터가 곧바로 한 번 더 때린다
+      const r = hit(1, special.name)
+      if (!r.landed || r.dead) return r.dead
+      s.events.push({ t: 'status', target: 'player', kind: 'stun' })
+      return hit(1, null, { canDodge: false }).dead
+    }
+  }
+}
+
+function rollSpecial(m: Monster, rng: Rng): Special | null {
+  for (const sp of m.specials) if (rng() < sp.chance) return sp
+  return null
+}
+
+function lose(s: GameState) {
+  const p = s.player
+  const goldLost = Math.floor(p.gold * R.DEATH_GOLD_LOSS)
+  p.gold -= goldLost
+  p.hp = R.maxHp(p)
+  p.mp = R.maxMp(p)
+  s.battle = null
+  s.record.defeats++
+  s.events.push({ t: 'defeat', goldLost })
+}
+
+function win(s: GameState, m: Monster, rng: Rng) {
+  const p = s.player
+  const b = s.battle!
+  const region = regionById(b.regionId)
+  const progress = s.progress[region.id]
+
+  const gold = Math.round(m.gold * between(rng, 0.8, 1.2) * R.goldBonus(p))
+  p.gold += gold
+
+  const drops: PotionId[] = []
+  for (const d of region.drops) {
+    if (rng() < d.chance * R.dropBonus(p) * (m.boss ? 3 : 1)) {
+      p.potions[d.id]++
+      drops.push(d.id)
+    }
+  }
+
+  const levelUps = gainExp(p, m.exp)
+  if (levelUps === 0) p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * 0.15))
+
   let bossFirst: string | null = null
+  let equipDrop: string | null = null
   if (m.boss) {
     if (!progress.bossDefeated) {
       progress.bossDefeated = true
       bossFirst = region.id
       if (region.id === REGIONS[REGIONS.length - 1].id) s.cleared = true
+      const drop = EQUIPS.find((e) => e.dropFrom === m.id)
+      if (drop && !p.owned.includes(drop.id)) {
+        obtainEquip(p, drop.id)
+        equipDrop = drop.id
+      }
     }
   } else {
     progress.kills++
   }
 
+  for (const q of QUESTS) {
+    const g = q.goal
+    const hit =
+      (g.kind === 'kill' && g.monsterId === m.id) || (g.kind === 'boss' && g.monsterId === m.id) || (g.kind === 'flawless' && !b.damaged)
+    if (hit) s.quests[q.id].progress = Math.min(questTarget(q), s.quests[q.id].progress + 1)
+  }
+
   s.battle = null
-  s.events.push({ t: 'victory', exp: m.exp, gold, drops, levelUps, bossFirst })
+  s.record.wins++
+  s.events.push({ t: 'victory', exp: m.exp, gold, drops, levelUps, bossFirst, equipDrop })
 }

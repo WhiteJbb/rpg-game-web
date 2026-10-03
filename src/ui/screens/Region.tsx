@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { eventById } from '../../game/data/events'
+import { potionById } from '../../game/data/items'
 import { monsterById } from '../../game/data/monsters'
 import { regionById } from '../../game/data/regions'
-import { canChallengeBoss } from '../../game/engine'
+import { canChallengeBoss, choiceGoldCost } from '../../game/engine'
 import type { Action, GameEvent, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
 import { Gold, Modal } from '../common'
@@ -14,19 +16,33 @@ interface Props {
   onBack: () => void
 }
 
+type Result = Extract<GameEvent, { t: 'eventResult' }> & { eventId: string; ambush: string | null }
+
 export function Region({ game, regionId, act, onBattle, onBack }: Props) {
   const region = regionById(regionId)
   const progress = game.progress[regionId]
   const boss = monsterById(region.boss)
-  const [found, setFound] = useState<Extract<GameEvent, { t: 'treasure' | 'spring' }> | null>(null)
+  const [result, setResult] = useState<Result | null>(null)
 
   const go = (action: Action) => {
-    for (const e of act(action).events) {
-      if (e.t === 'encounter') onBattle(e.monsterId)
-      else if (e.t === 'treasure' || e.t === 'spring') setFound(e)
-    }
+    for (const e of act(action).events) if (e.t === 'encounter') onBattle(e.monsterId)
   }
 
+  const choose = (eventId: string, index: number) => {
+    const events = act({ type: 'choose', index }).events
+    const r = events.find((e) => e.t === 'eventResult')
+    if (!r || r.t !== 'eventResult') return
+    const ambush = events.find((e) => e.t === 'encounter')
+    setResult({ ...r, eventId, ambush: ambush?.t === 'encounter' ? ambush.monsterId : null })
+  }
+
+  const closeResult = () => {
+    const ambush = result?.ambush
+    setResult(null)
+    if (ambush) onBattle(ambush)
+  }
+
+  const pending = game.pending && eventById(game.pending.eventId)
   const bossReady = canChallengeBoss(game, regionId)
   return (
     <Scene bg={regionId} className="region-scene">
@@ -51,19 +67,50 @@ export function Region({ game, regionId, act, onBattle, onBack }: Props) {
           지도로 돌아가기
         </button>
       </div>
-      {found && (
-        <Modal title={found.t === 'treasure' ? '보물상자 발견!' : '맑은 샘물 발견!'} onClose={() => setFound(null)}>
-          {found.t === 'treasure' ? (
-            <p className="reward-line">
-              <Gold amount={found.gold} /> 획득
-            </p>
-          ) : (
-            <p className="reward-line">
-              HP +{found.hp} · MP +{found.mp}
-            </p>
-          )}
-          <button className="btn btn-primary" autoFocus onClick={() => setFound(null)}>
-            좋아!
+
+      {pending && (
+        <Modal title={pending.title}>
+          <Art kind="events" id={pending.id} alt="" className="event-art" fallback="❓" />
+          <p>{pending.text}</p>
+          <div className="choices">
+            {pending.choices.map((c, i) => {
+              const gold = choiceGoldCost(regionId, c)
+              const potion = c.cost?.potion
+              const unaffordable = game.player.gold < gold || (potion !== undefined && game.player.potions[potion] < 1)
+              return (
+                <button key={i} className={`btn ${i === 0 ? 'btn-primary' : ''}`} disabled={unaffordable} onClick={() => choose(pending.id, i)}>
+                  {c.label}
+                  {gold > 0 && <Gold amount={gold} />}
+                  {potion && <small>(보유 {game.player.potions[potion]})</small>}
+                </button>
+              )
+            })}
+          </div>
+        </Modal>
+      )}
+
+      {result && (
+        <Modal title={eventById(result.eventId).title}>
+          <Art kind="events" id={result.eventId} alt="" className="event-art" fallback="❓" />
+          <p>{result.text}</p>
+          <ul className="rewards">
+            {result.gold > 0 && (
+              <li>
+                <Gold amount={result.gold} /> 획득
+              </li>
+            )}
+            {result.exp > 0 && <li>경험치 +{result.exp}</li>}
+            {result.hp !== 0 && <li className={result.hp < 0 ? 'loss' : ''}>HP {result.hp > 0 ? `+${result.hp}` : result.hp}</li>}
+            {result.mp !== 0 && <li>MP +{result.mp}</li>}
+            {result.potion && (
+              <li>
+                <Art kind="items" id={result.potion} alt="" className="icon-inline" fallback="🧪" /> {potionById(result.potion).name}
+              </li>
+            )}
+            {result.levelUps > 0 && <li className="levelup">레벨 업! Lv.{game.player.level}</li>}
+          </ul>
+          <button className="btn btn-primary" autoFocus onClick={closeResult}>
+            {result.ambush ? '싸운다!' : '계속'}
           </button>
         </Modal>
       )}

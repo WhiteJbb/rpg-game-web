@@ -7,7 +7,15 @@ export const CRIT_MULT = 1.75
 export const DEFEND_MULT = 0.4
 export const CHARGE_MULT = 2.4
 export const DEATH_GOLD_LOSS = 0.2
-export const SLOT_SYMBOLS = 5 // 0번 심볼이 잭팟(7)
+export const SLOT_SYMBOLS = 5 // 0번 심볼이 잭팟(왕관)
+export const EVENT_CHANCE = 0.15
+export const BURN_TURNS = 3
+export const BURN_RATIO = 0.3 // 맞힌 피해 대비 턴당 화상 피해
+export const CHILL_TURNS = 2
+export const CHILL_MULT = 0.7
+export const POISON_TURNS = 3
+export const POISON_RATIO = 0.06 // 최대 HP 대비 턴당 독 피해
+export const PIERCE_RES = 0.3
 
 export const expToNext = (level: number) => Math.round(18 * Math.pow(level, 1.7))
 export const maxHp = (p: Player) => 100 + (p.level - 1) * 18
@@ -15,9 +23,7 @@ export const maxHp = (p: Player) => 100 + (p.level - 1) * 18
 /** 기본 스텟 + 착용 장비 보너스 */
 export function totalStat(p: Player, stat: StatKey): number {
   let v = p.stats[stat]
-  if (stat === 'str' || stat === 'def' || stat === 'int') {
-    for (const id of [p.weapon, p.armor]) if (id) v += equipById(id)[stat]
-  }
+  for (const id of [p.weapon, p.armor]) if (id) v += equipById(id)[stat] ?? 0
   return v
 }
 

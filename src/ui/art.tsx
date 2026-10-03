@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 
-export type ArtKind = 'backgrounds' | 'monsters' | 'buildings' | 'characters' | 'items'
+export type ArtKind = 'backgrounds' | 'monsters' | 'buildings' | 'characters' | 'items' | 'events'
 
 // 파일명 = 데이터 id. 이미지가 아직 없으면 플레이스홀더로 대체된다.
 const files = import.meta.glob('../assets/**/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
