@@ -60,14 +60,20 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
         <div className="char-left">
           <Art kind="characters" id="hero" alt={p.name} className="char-art" fallback="🧑‍🌾" />
           <Bar kind="exp" label="EXP" value={p.exp} max={R.expToNext(p.level)} />
-          <p className="char-gear">
-            {SLOTS.map((slot) => (
-              <span key={slot.id}>
-                {slot.name}: {p[slot.id] ? equipName(p, equipById(p[slot.id]!)) : '없음'}
-                <br />
-              </span>
-            ))}
-          </p>
+          <div className="gear-slots">
+            {SLOTS.map((slot) => {
+              const e = p[slot.id] ? equipById(p[slot.id]!) : null
+              return (
+                <div key={slot.id} className={`gear-slot ${e ? '' : 'gear-empty'}`} title={e ? `${equipName(p, e)} — ${equipBonus(p, e)}` : `${slot.name} 없음`}>
+                  <div className="gear-box">
+                    {e ? <Art kind="items" id={e.id} alt={equipName(p, e)} className="gear-art" fallback={SLOT_ICON[slot.id]} /> : <span className="gear-none">{SLOT_ICON[slot.id]}</span>}
+                    {e && p.upgrades[e.id] > 0 && <span className="gear-plus">+{p.upgrades[e.id]}</span>}
+                  </div>
+                  <small>{e ? e.name : slot.name}</small>
+                </div>
+              )
+            })}
+          </div>
         </div>
         <div className="char-right">
           <h3>

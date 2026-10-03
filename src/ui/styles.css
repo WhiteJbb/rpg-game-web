@@ -436,7 +436,15 @@ input {
 .char-left { display: grid; gap: 8px; align-content: start; }
 .char-art { width: 100%; aspect-ratio: 1; }
 .char-art.art-missing { font-size: 6rem; }
-.char-gear { font-size: 0.9rem; margin: 0; }
+.gear-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.gear-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; text-align: center; }
+.gear-slot small { line-height: 1.2; }
+.gear-box { position: relative; width: 100%; max-width: 64px; aspect-ratio: 1; background: #fff8ea; border: 2px solid var(--line); border-radius: 10px; display: grid; place-items: center; }
+.gear-art { width: 84%; height: 84%; }
+.gear-none { font-size: 1.4rem; filter: grayscale(1); opacity: 0.35; }
+.gear-empty .gear-box { border-style: dashed; border-color: var(--paper-dark); }
+.gear-empty small { opacity: 0.6; }
+.gear-plus { position: absolute; right: -6px; bottom: -6px; background: var(--accent); color: #fff; border-radius: 8px; padding: 0 5px; font-size: 0.75rem; font-family: var(--title-font); }
 .stats { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .stats li { display: grid; grid-template-columns: 3em 4.2em 1fr 40px; align-items: center; gap: 6px; }
 .stat-name { font-family: var(--title-font); }
