@@ -42,7 +42,8 @@ function apply() {
   current = { id: target, audio }
   // 첫 클릭 전에는 브라우저가 재생을 막는다. 그 경우 아래 pointerdown에서 다시 시도한다.
   audio.play().then(
-    () => fade(audio, VOLUME),
+    // 불러오는 사이 곡이 바뀌었으면 뒤늦게 켜지 않는다 (두 곡이 겹쳐 들리던 원인)
+    () => (current?.audio === audio ? fade(audio, VOLUME) : audio.pause()),
     () => {
       if (current?.audio === audio) current = null
     },
