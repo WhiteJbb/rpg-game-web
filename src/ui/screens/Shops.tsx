@@ -53,7 +53,7 @@ export function PotionShop({ game, act, onBack }: Props) {
   return (
     <Shop bg="shop-potion" title="물약상점" onBack={onBack}>
       {POTIONS.map((po) => (
-        <Good key={po.id} id={po.id} name={po.name} fallback="🧪" desc={`${po.hp ? `HP +${po.hp}` : `MP +${po.mp}`} · 보유 ${p.potions[po.id]}`}>
+        <Good key={po.id} id={po.id} name={po.name} fallback="🧪" desc={`${po.hp ? `HP +${R.potionHeal(p, po).hp}` : `MP +${R.potionHeal(p, po).mp}`} · 보유 ${p.potions[po.id]}`}>
           <BuyButton price={po.price} gold={p.gold} onClick={() => act({ type: 'buyPotion', potionId: po.id })} />
         </Good>
       ))}
@@ -78,7 +78,7 @@ export function EquipShop({ game, act, onBack }: Props) {
   const p = game.player
   const [slot, setSlot] = useState<Equip['slot']>('weapon')
   // 보스 전용 장비는 얻은 뒤에만 목록에 나온다
-  const list = EQUIPS.filter((e) => e.slot === slot && (!e.dropFrom || p.owned.includes(e.id)))
+  const list = EQUIPS.filter((e) => e.slot === slot && (!e.dropFrom || p.owned.includes(e.id)) && (e.cycle ?? 0) <= game.cycle)
   return (
     <Shop bg="shop-equip" title="대장간" onBack={onBack}>
       <div className="tabs" role="tablist">
@@ -97,7 +97,7 @@ export function EquipShop({ game, act, onBack }: Props) {
                   착용
                 </button>
               )}
-              {(p.upgrades[e.id] ?? 0) < R.MAX_UPGRADE ? (
+              {(p.upgrades[e.id] ?? 0) < R.maxUpgrade(game.cycle) ? (
                 <button className="btn btn-buy" disabled={p.gold < R.upgradeCost(p, e)} onClick={() => act({ type: 'upgradeEquip', equipId: e.id })}>
                   강화 <Gold amount={R.upgradeCost(p, e)} />
                 </button>

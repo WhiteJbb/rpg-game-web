@@ -3,7 +3,7 @@ import { EQUIPS, equipById, equipWorth, potionById, spellById } from './data/ite
 import { canTakeJob, jobById } from './data/jobs'
 import { monsterById, type Monster, type Special } from './data/monsters'
 import { QUESTS, questById, questTarget } from './data/quests'
-import { REGIONS, regionById } from './data/regions'
+import { REGIONS, regionById, secretBossOf } from './data/regions'
 import * as R from './rules'
 import type { Action, Battle, GameEvent, GameState, Player, PotionId, Rng } from './types'
 
@@ -61,7 +61,7 @@ export const canChallengeBoss = (s: GameState, regionId: string) =>
   isRegionOpen(s, regionId) && s.progress[regionId].kills >= regionById(regionId).killsForBoss
 
 export const canChallengeSecret = (s: GameState, regionId: string) =>
-  regionById(regionId).secretBoss !== undefined && s.cleared && isRegionOpen(s, regionId)
+  secretBossOf(regionById(regionId), s.cycle) !== undefined && s.cleared && isRegionOpen(s, regionId)
 
 export const isQuestVisible = (s: GameState, questId: string) => {
   const q = questById(questId)
@@ -161,7 +161,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const region = regionById(action.regionId)
       if (action.secret) {
         if (!canChallengeSecret(s, region.id)) return fail('아직 도전할 수 없습니다')
-        startBattle(region.secretBoss!, region.id)
+        startBattle(secretBossOf(region, s.cycle)!, region.id)
         return s
       }
       if (!canChallengeBoss(s, region.id)) return fail('아직 보스에게 도전할 수 없습니다')
@@ -202,7 +202,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
 
     case 'buyEquip': {
       const eq = equipById(action.equipId)
-      if (eq.dropFrom) return fail('상점에서 팔지 않는 장비입니다')
+      if (eq.dropFrom || (eq.cycle ?? 0) > s.cycle) return fail('상점에서 팔지 않는 장비입니다')
       if (p.owned.includes(eq.id)) return fail('이미 가지고 있습니다')
       if (!spend(eq.price)) return fail('골드가 부족합니다')
       obtainEquip(p, eq.id)
@@ -230,7 +230,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const eq = equipById(action.equipId)
       if (!p.owned.includes(eq.id)) return fail('가지고 있지 않은 장비입니다')
       const level = p.upgrades[eq.id] ?? 0
-      if (level >= R.MAX_UPGRADE) return fail('더 강화할 수 없습니다')
+      if (level >= R.maxUpgrade(s.cycle)) return fail('더 강화할 수 없습니다')
       if (!spend(R.upgradeCost(p, eq))) return fail('골드가 부족합니다')
       p.upgrades[eq.id] = level + 1
       emit({ t: 'upgraded', id: eq.id, level: level + 1 })
@@ -300,8 +300,9 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
     case 'usePotion': {
       const potion = potionById(action.potionId)
       if (p.potions[potion.id] < 1) return fail('포션이 없습니다')
-      const hp = Math.min(R.maxHp(p) - p.hp, potion.hp)
-      const mp = Math.min(R.maxMp(p) - p.mp, potion.mp)
+      const heal = R.potionHeal(p, potion)
+      const hp = Math.min(R.maxHp(p) - p.hp, heal.hp)
+      const mp = Math.min(R.maxMp(p) - p.mp, heal.mp)
       if (hp + mp <= 0) return fail('지금은 마실 필요가 없습니다')
       p.potions[potion.id]--
       p.hp += hp
@@ -580,7 +581,8 @@ function win(s: GameState, m: Monster, rng: Rng) {
   let bossFirst: string | null = null
   let secretFirst = false
   let equipDrop: string | null = null
-  if (m.id === region.secretBoss) {
+  const secret = m.id === secretBossOf(region, s.cycle)
+  if (secret) {
     secretFirst = !progress.secretDefeated
     progress.secretDefeated = true
   } else if (m.boss) {
@@ -603,7 +605,7 @@ function win(s: GameState, m: Monster, rng: Rng) {
   for (const q of QUESTS) {
     const g = q.goal
     const hit =
-      (g.kind === 'kill' && g.monsterId === m.id) || (g.kind === 'boss' && g.monsterId === m.id) || (g.kind === 'flawless' && !b.damaged)
+      (g.kind === 'kill' && g.monsterId === m.id) || (g.kind === 'boss' && g.monsterId === m.id) || (g.kind === 'secret' && secret) || (g.kind === 'flawless' && !b.damaged)
     if (hit) s.quests[q.id].progress = Math.min(questTarget(q), s.quests[q.id].progress + 1)
   }
 

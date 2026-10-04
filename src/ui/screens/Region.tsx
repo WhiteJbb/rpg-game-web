@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { eventById } from '../../game/data/events'
 import { potionById } from '../../game/data/items'
 import { monsterById } from '../../game/data/monsters'
-import { regionById } from '../../game/data/regions'
+import { regionById, secretBossOf } from '../../game/data/regions'
 import { canChallengeBoss, canChallengeSecret, choiceGoldCost } from '../../game/engine'
 import type { Action, GameEvent, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
@@ -22,7 +22,7 @@ export function Region({ game, regionId, act, onBattle, onBack }: Props) {
   const region = regionById(regionId)
   const progress = game.progress[regionId]
   const boss = monsterById(region.boss, game.cycle)
-  const secret = canChallengeSecret(game, regionId) ? monsterById(region.secretBoss!, game.cycle) : null
+  const secret = canChallengeSecret(game, regionId) ? monsterById(secretBossOf(region, game.cycle)!, game.cycle) : null
   const [result, setResult] = useState<Result | null>(null)
 
   const go = (action: Action) => {
@@ -68,7 +68,7 @@ export function Region({ game, regionId, act, onBattle, onBack }: Props) {
           <button className="btn btn-boss btn-secret" onClick={() => go({ type: 'challengeBoss', regionId, secret: true })}>
             <Art kind="monsters" id={secret.id} alt="" className={`boss-thumb ${progress.secretDefeated ? '' : 'unknown'}`} fallback="🐉" />
             <span>
-              {progress.secretDefeated ? `재도전 — ${secret.name}` : '지하에서 무언가 깨어났다...'}
+              {progress.secretDefeated ? `재도전 — ${secret.name}` : '성 깊은 곳에서 무언가 깨어났다...'}
               <small>권장 Lv.{secret.level + 4}</small>
             </span>
           </button>

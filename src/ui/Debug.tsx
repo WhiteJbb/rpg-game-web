@@ -26,7 +26,7 @@ interface Props {
 const TABS = ['상태', '바로가기', '전투', '갤러리'] as const
 
 const regionOf = (monsterId: string) =>
-  REGIONS.find((r) => r.boss === monsterId || r.secretBoss === monsterId || r.monsters.some((m) => m.id === monsterId))!.id
+  REGIONS.find((r) => r.boss === monsterId || r.secretBosses?.includes(monsterId) || r.monsters.some((m) => m.id === monsterId))!.id
 
 export function Debug({ game, screen, patch, goto, onReset }: Props) {
   const [open, setOpen] = useState(false)
@@ -121,7 +121,7 @@ export function Debug({ game, screen, patch, goto, onReset }: Props) {
               >
                 모든 장비·마법·포션
               </button>
-              <button className="btn btn-small" onClick={() => patch((g) => void (g.player.upgrades = Object.fromEntries(g.player.owned.map((id) => [id, R.MAX_UPGRADE]))))}>
+              <button className="btn btn-small" onClick={() => patch((g) => void (g.player.upgrades = Object.fromEntries(g.player.owned.map((id) => [id, R.maxUpgrade(g.cycle)]))))}>
                 보유 장비 최대 강화
               </button>
               <div className="debug-row">

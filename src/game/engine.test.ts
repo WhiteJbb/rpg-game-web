@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { seeded, simulate } from './bot'
-import { EQUIPS } from './data/items'
+import { EQUIPS, POTIONS } from './data/items'
 import { monsterById } from './data/monsters'
-import { REGIONS } from './data/regions'
+import { REGIONS, secretBossOf } from './data/regions'
+import { SECRET_CLEAR } from './data/story'
 import { EVENTS } from './data/events'
 import { QUESTS } from './data/quests'
 import { canChallengeBoss, canChallengeSecret, isQuestDone, isQuestVisible, isRegionOpen, newBattle, newGame, reduce } from './engine'
@@ -256,8 +257,8 @@ describe('engine', () => {
     s = reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1))
     expect(R.totalStat(s.player, 'str')).toBeGreaterThan(before)
     expect(R.upgradeCost(s.player, EQUIPS.find((e) => e.id === 'bronze-sword')!)).toBeGreaterThan(cost1)
-    for (let i = 1; i < R.MAX_UPGRADE; i++) s = reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1))
-    expect(s.player.upgrades['bronze-sword']).toBe(R.MAX_UPGRADE)
+    for (let i = 1; i < R.maxUpgrade(0); i++) s = reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1))
+    expect(s.player.upgrades['bronze-sword']).toBe(R.maxUpgrade(0))
     expect(errorOf(reduce(s, { type: 'upgradeEquip', equipId: 'bronze-sword' }, seeded(1)))).toBeTruthy()
   })
 
@@ -390,7 +391,12 @@ describe('engine', () => {
       for (const m of r.monsters) expect(monsterById(m.id).boss).toBe(false)
       expect(monsterById(r.boss).boss).toBe(true)
       if (r.requires) expect(REGIONS.some((x) => x.id === r.requires)).toBe(true)
+      for (const id of r.secretBosses ?? []) {
+        expect(monsterById(id).boss).toBe(true)
+        expect(SECRET_CLEAR[id]).toBeTruthy()
+      }
     }
+    for (const e of EQUIPS) if (e.dropFrom) expect(monsterById(e.dropFrom).boss).toBe(true)
   })
 })
 
@@ -404,10 +410,34 @@ describe('전체 플레이 시뮬레이션', () => {
     expect(avgTries).toBeLessThan(12)
   })
 
-  it('2회차도 엔딩까지 갈 수 있다', () => {
-    for (const build of ['warrior', 'mage'] as const) {
-      const run = simulate(build, 11, 2)
-      expect(run.cleared && run.cycle === 1).toBe(true)
+  it('회차가 올라도 막히지 않는다 (5회차까지, 회차마다 숨은 보스 포함)', () => {
+    for (const build of ['warrior', 'mage', 'rogue'] as const) {
+      const run = simulate(build, 11, 5, true)
+      const st = Object.values(run.stats)
+      const battles = st.reduce((a, x) => a + x.battles, 0)
+      const deaths = st.reduce((a, x) => a + x.deaths, 0)
+      console.log('5회차', build, { 레벨: run.level, 전투: battles, 사망: deaths, 숨은보스시도: run.secretTries })
+      expect(run.cleared && run.cycle === 4 && run.secretDefeated).toBe(true)
+      // 회차당 전투 수가 1회차의 두 배를 넘지 않는다
+      expect(battles).toBeLessThan(5 * 200)
+      expect(deaths).toBeLessThan(5 * 15)
     }
+  })
+
+  it('회차가 오르면 숨은 보스가 바뀌고, 회차 전용 장비와 강화 상한이 열린다', () => {
+    let s = newGame('t')
+    s.player.gold = 1e6
+    expect(errorOf(reduce(s, { type: 'buyEquip', equipId: 'dragonslayer-sword' }, seeded(1)))).toBeTruthy()
+    const castle = REGIONS[REGIONS.length - 1]
+    expect(secretBossOf(castle, 0)).toBe('ancient-dragon')
+    expect(secretBossOf(castle, 1)).toBe('lich-king')
+    expect(secretBossOf(castle, 3)).toBe('ancient-dragon')
+    s = { ...s, cycle: 1 }
+    s = reduce(s, { type: 'buyEquip', equipId: 'dragonslayer-sword' }, seeded(1))
+    expect(s.player.owned).toContain('dragonslayer-sword')
+    expect(R.maxUpgrade(1)).toBeGreaterThan(R.maxUpgrade(0))
+    // 포션은 레벨이 높아져도 최대치의 일정 비율은 채운다
+    s.player.level = 200
+    expect(R.potionHeal(s.player, POTIONS.find((x) => x.id === 'hp-l')!).hp).toBe(Math.round(R.maxHp(s.player) * 0.5))
   })
 })
