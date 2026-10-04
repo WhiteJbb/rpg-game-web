@@ -44,6 +44,18 @@ export const CYCLE_LEVELS = 26
 const BOSS_HP = 2.6
 const BOSS_ATK = 1.2
 
+/**
+ * 1회차 범위(숨은 보스 레벨)까지는 제곱 곡선, 그 뒤로는 직선으로 오른다. 플레이어의 성장(레벨당 스텟, 강화)이
+ * 직선이라 제곱 곡선을 그대로 두면 회차가 오를수록 전투가 한없이 길어진다. 2회차 이후의 난이도는 두 기울기로 맞춘다.
+ */
+const CURVE_END = 32
+const HP_SLOPE = 62
+const ATK_SLOPE = 6.5
+const curve = (l: number, a: number, b: number, c: number, slope: number) => {
+  const m = Math.min(l, CURVE_END)
+  return c + b * m + a * m * m + slope * (l - m)
+}
+
 /** 레벨 기준선 × 몬스터별 배율. 밸런스는 기준선 한 곳에서 조절한다. */
 function build({ id, name, level, mods, specials }: Def, cycle: number): Monster {
   const boss = mods.boss ?? false
@@ -53,10 +65,11 @@ function build({ id, name, level, mods, specials }: Def, cycle: number): Monster
     name,
     level: l,
     // 제곱 항은 전직(Lv.10) 이후 강해지는 플레이어를 따라가기 위한 것
-    hp: Math.round((25 + 16 * l + 0.68 * l * l) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1)),
-    atk: Math.round((10 + 4.6 * l + 0.018 * l * l) * (mods.atk ?? 1) * (boss ? BOSS_ATK : 1)),
+    hp: Math.round(curve(l, 0.68, 16, 25, HP_SLOPE) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1)),
+    atk: Math.round(curve(l, 0.018, 4.6, 10, ATK_SLOPE) * (mods.atk ?? 1) * (boss ? BOSS_ATK : 1)),
     def: Math.round((2 + 1.6 * l) * (mods.def ?? 1)),
-    res: Math.round((2 + 1.6 * l) * (mods.res ?? 1)),
+    // 마법 저항은 곡선 끝에서 멈춘다. 저항 공식이 비율식이라, 계속 오르면 지력을 올려도 마법 피해가 늘지 않는다
+    res: Math.round((2 + 1.6 * Math.min(l, CURVE_END)) * (mods.res ?? 1)),
     exp: Math.round((3 + 4 * Math.pow(l, 1.5)) * (boss ? 6 : 1)),
     gold: Math.round((4 + 6 * Math.pow(l, 1.2)) * (boss ? 8 : 1)),
     boss,
@@ -98,6 +111,16 @@ const DEFS: Def[] = [
   mk('ancient-dragon', '고룡', 32, { boss: true, hp: 1.15 }, [
     { kind: 'charge', name: '멸망의 숨결', chance: 0.35 },
     { kind: 'heavy', name: '꼬리 휩쓸기', chance: 0.25 },
+  ]),
+  mk('lich-king', '망자의 왕', 32, { boss: true, hp: 1.05, res: 1.8 }, [
+    { kind: 'charge', name: '죽음의 선고', chance: 0.3 },
+    { kind: 'drain', name: '영혼 흡수', chance: 0.25 },
+    { kind: 'poison', name: '역병', chance: 0.2 },
+  ]),
+  mk('night-avatar', '밤의 화신', 32, { boss: true, hp: 1.2, def: 1.3, res: 1.3 }, [
+    { kind: 'charge', name: '끝없는 밤', chance: 0.35 },
+    { kind: 'stun', name: '별의 추락', chance: 0.2 },
+    { kind: 'double', name: '초승달 베기', chance: 0.25 },
   ]),
 ]
 

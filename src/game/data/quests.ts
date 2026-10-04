@@ -6,6 +6,7 @@ import { REGIONS } from './regions'
 export type QuestGoal =
   | { kind: 'kill'; monsterId: string; count: number }
   | { kind: 'boss'; monsterId: string }
+  | { kind: 'secret' } // 그 회차의 숨은 보스
   | { kind: 'flawless'; count: number }
 
 export interface Quest {
@@ -20,7 +21,7 @@ export interface Quest {
   reward: { gold: number; points?: number; potion?: PotionId }
 }
 
-export const questTarget = (q: Quest) => (q.goal.kind === 'boss' ? 1 : q.goal.count)
+export const questTarget = (q: Quest) => (q.goal.kind === 'boss' || q.goal.kind === 'secret' ? 1 : q.goal.count)
 
 // 지역마다 사냥 의뢰 2개 + 보스 토벌 1개
 const regionQuests: Quest[] = REGIONS.flatMap((r, i): Quest[] => {
@@ -67,11 +68,11 @@ export const QUESTS: Quest[] = [
   },
   {
     id: 'secret-boss',
-    title: '고룡 토벌',
-    desc: '뱀파이어의 성 지하에서 깨어난 고룡을 쓰러뜨린다',
+    title: '깨어난 것',
+    desc: '뱀파이어의 성 깊은 곳에서 깨어난 것을 쓰러뜨린다',
     regionId: 'vampire-castle',
     afterClear: true,
-    goal: { kind: 'boss', monsterId: 'ancient-dragon' },
+    goal: { kind: 'secret' },
     reward: { gold: 3000, points: 5 },
   },
 ]

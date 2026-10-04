@@ -295,7 +295,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
                   <span className="item-text">
                     {po.name}
                     <small>
-                      {po.hp ? `HP +${po.hp}` : `MP +${po.mp}`} · {p.potions[po.id]}개
+                      {po.hp ? `HP +${R.potionHeal(p, po).hp}` : `MP +${R.potionHeal(p, po).mp}`} · {p.potions[po.id]}개
                     </small>
                   </span>
                 </button>

@@ -5,6 +5,7 @@ import { SAVE_KEY, deserialize, serialize } from '../game/save'
 import type { Action, GameState } from '../game/types'
 import { JOBS, canTakeJob, jobById } from '../game/data/jobs'
 import { monsterById } from '../game/data/monsters'
+import { isSecretBoss } from '../game/data/regions'
 import { Scene } from './art'
 import { hasBgm, setBgm } from './bgm'
 import { Dialog, Hud, MuteButton } from './common'
@@ -74,7 +75,7 @@ export function App() {
   const track =
     screen.n === 'title' || !game ? 'title' :
     screen.n === 'region' ? screen.id :
-    screen.n === 'battle' ? (hasBgm(screen.monsterId) ? screen.monsterId : monsterById(screen.monsterId).boss ? 'boss' : 'battle') :
+    screen.n === 'battle' ? (hasBgm(screen.monsterId) ? screen.monsterId : isSecretBoss(screen.monsterId) ? 'ancient-dragon' : monsterById(screen.monsterId).boss ? 'boss' : 'battle') :
     screen.n === 'story' ? (screen.lines === ENDING ? 'ending' : null) :
     screen.n === 'ending' ? 'ending' :
     'town'
@@ -105,11 +106,11 @@ export function App() {
   const resume = (g: GameState) =>
     setScreen(g.battle ? { n: 'battle', monsterId: g.battle.monsterId, regionId: g.battle.regionId, seq: 0 } : { n: 'town' })
 
-  const afterBattle = (outcome: BattleOutcome, regionId: string) => {
+  const afterBattle = (outcome: BattleOutcome, regionId: string, monsterId: string) => {
     if (outcome.type === 'defeat') return setScreen({ n: 'town' })
     if (outcome.type === 'fled') (say('무사히 도망쳤다!'), sfx('dodge'))
     if (outcome.type === 'victory' && outcome.victory.secretFirst)
-      return setScreen({ n: 'story', bg: regionId, lines: SECRET_CLEAR, next: { n: 'region', id: regionId } })
+      return setScreen({ n: 'story', bg: monsterId, lines: SECRET_CLEAR[monsterId], next: { n: 'region', id: regionId } })
     const cleared = outcome.type === 'victory' ? outcome.victory.bossFirst : null
     if (!cleared) return setScreen({ n: 'region', id: regionId })
     const afterStory: Screen = game!.cleared ? { n: 'story', bg: 'ending', lines: ENDING, next: { n: 'ending' } } : { n: 'map' }
@@ -196,7 +197,7 @@ export function App() {
           monsterId={screen.monsterId}
           regionId={screen.regionId}
           act={act}
-          onExit={(outcome) => afterBattle(outcome, screen.regionId)}
+          onExit={(outcome) => afterBattle(outcome, screen.regionId, screen.monsterId)}
         />
       )
       break

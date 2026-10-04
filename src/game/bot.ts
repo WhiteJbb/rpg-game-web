@@ -66,8 +66,8 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
     if (!p().job && canTakeJob(p(), build)) act({ type: 'changeJob', job: build })
     for (const slot of ['weapon', 'armor', 'accessory'] as const) {
       const current = p()[slot]
-      const best = EQUIPS.filter((e) => e.slot === slot && !e.dropFrom && !p().owned.includes(e.id) && e.price <= p().gold * 0.8)
-        .filter((e) => !current || score(e) > score(EQUIPS.find((x) => x.id === current)!))
+      const best = EQUIPS.filter((e) => e.slot === slot && !e.dropFrom && (e.cycle ?? 0) <= s.cycle && !p().owned.includes(e.id) && e.price <= p().gold * 0.8)
+        .filter((e) => !current || score(e) > score(EQUIPS.find((x) => x.id === current)!) * (1 + R.UPGRADE_BONUS * (p().upgrades[current] ?? 0)))
         .sort((a, b) => score(b) - score(a))[0]
       if (best) {
         act({ type: 'buyEquip', equipId: best.id })
@@ -77,7 +77,7 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
     // 남는 골드의 절반까지는 착용 장비 강화에 쓴다
     for (let i = 0; i < 20; i++) {
       const target = [p().weapon, p().armor, p().accessory]
-        .filter((id): id is string => id !== null && (p().upgrades[id] ?? 0) < R.MAX_UPGRADE)
+        .filter((id): id is string => id !== null && (p().upgrades[id] ?? 0) < R.maxUpgrade(s.cycle))
         .map((id) => EQUIPS.find((e) => e.id === id)!)
         .sort((x, y) => R.upgradeCost(p(), x) - R.upgradeCost(p(), y))[0]
       if (!target || R.upgradeCost(p(), target) > p().gold * 0.5) break
@@ -132,11 +132,31 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
     return !lost
   }
 
+  // 엔딩 뒤 숨은 보스: 지면 성에서 몇 판 더 싸우고 다시 도전한다. 여러 회차를 돌 때는 회차마다 잡는다
+  let secretTries = 0
+  const secretRun = () => {
+    for (let tries = 0; s.cleared && !s.progress['vampire-castle'].secretDefeated && tries < 40; tries++) {
+      town()
+      secretTries++
+      act({ type: 'challengeBoss', regionId: 'vampire-castle', secret: true })
+      if (fight('vampire-castle', true)) break
+      for (let i = 0; i < 6; i++) {
+        act({ type: 'explore', regionId: 'vampire-castle' })
+        if (s.pending) act({ type: 'choose', index: EVENTS.find((e) => e.id === s.pending!.eventId)!.choices.length - 1 })
+        if (s.battle) fight('vampire-castle', false)
+        if (i === 2) town()
+      }
+    }
+  }
+
   let sinceTown = 0
   let retryAfter = 0 // 보스에게 진 뒤 몇 판 더 사냥하고 재도전할지
   town()
   for (let step = 0; step < 8000 && (!s.cleared || s.cycle < cycles - 1); step++) {
-    if (s.cleared) act({ type: 'newCycle' })
+    if (s.cleared) {
+      if (secretBoss) secretRun()
+      act({ type: 'newCycle' })
+    }
     const region = REGIONS.filter((r) => isRegionOpen(s, r.id)).pop()!
     const boss = monsterById(region.boss, s.cycle)
     // 물약이 떨어졌거나 한참 싸웠으면 마을에 들른다
@@ -163,19 +183,6 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
       sinceTown++
     }
   }
-  // 엔딩 뒤 숨은 보스: 지면 성에서 몇 판 더 싸우고 다시 도전한다
-  let secretTries = 0
-  while (secretBoss && s.cleared && !s.progress['vampire-castle'].secretDefeated && secretTries < 40) {
-    town()
-    secretTries++
-    act({ type: 'challengeBoss', regionId: 'vampire-castle', secret: true })
-    if (fight('vampire-castle', true)) break
-    for (let i = 0; i < 6; i++) {
-      act({ type: 'explore', regionId: 'vampire-castle' })
-      if (s.pending) act({ type: 'choose', index: EVENTS.find((e) => e.id === s.pending!.eventId)!.choices.length - 1 })
-      if (s.battle) fight('vampire-castle', false)
-      if (i === 2) town()
-    }
-  }
+  if (secretBoss) secretRun()
   return { secretTries, secretDefeated: Boolean(s.progress['vampire-castle'].secretDefeated), cleared: s.cleared, cycle: s.cycle, level: p().level, gold: p().gold, potionsUsed, stats }
 }

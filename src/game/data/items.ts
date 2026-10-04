@@ -5,14 +5,16 @@ export interface Potion {
   name: string
   hp: number
   mp: number
+  /** 최대치 대비 최소 회복 비율. 레벨이 높아져도 포션이 쓸모 있게 한다 */
+  pct: number
   price: number
 }
 
 export const POTIONS: Potion[] = [
-  { id: 'hp-s', name: 'HP 포션(소)', hp: 60, mp: 0, price: 25 },
-  { id: 'hp-m', name: 'HP 포션(중)', hp: 200, mp: 0, price: 90 },
-  { id: 'hp-l', name: 'HP 포션(대)', hp: 600, mp: 0, price: 300 },
-  { id: 'mp', name: 'MP 포션', hp: 0, mp: 60, price: 70 },
+  { id: 'hp-s', name: 'HP 포션(소)', hp: 60, mp: 0, pct: 0.1, price: 25 },
+  { id: 'hp-m', name: 'HP 포션(중)', hp: 200, mp: 0, pct: 0.25, price: 90 },
+  { id: 'hp-l', name: 'HP 포션(대)', hp: 600, mp: 0, pct: 0.5, price: 300 },
+  { id: 'mp', name: 'MP 포션', hp: 0, mp: 60, pct: 0.2, price: 70 },
 ]
 
 export interface Spell {
@@ -49,6 +51,8 @@ export interface Equip {
   price: number
   /** 이 보스를 처음 쓰러뜨리면 얻는 전용 장비 (상점에서 팔지 않는다) */
   dropFrom?: string
+  /** 이 회차(0부터)에 들어서야 상점에 나온다 */
+  cycle?: number
 }
 
 export const EQUIPS: Equip[] = [
@@ -65,6 +69,13 @@ export const EQUIPS: Equip[] = [
   { id: 'archmage-staff', name: '대마법사의 지팡이', slot: 'weapon', str: 6, def: 0, int: 30, price: 3600 },
   { id: 'ogre-club', name: '오우거의 몽둥이', slot: 'weapon', str: 13, def: 0, int: 0, price: 0, dropFrom: 'ogre' },
   { id: 'vampire-sword', name: '흡혈귀의 검', slot: 'weapon', str: 38, def: 0, int: 8, crit: 10, price: 0, dropFrom: 'vampire-lord' },
+  { id: 'night-blade', name: '밤을 가르는 검', slot: 'weapon', str: 90, def: 0, int: 60, crit: 16, price: 0, dropFrom: 'night-avatar' },
+  { id: 'dragonslayer-sword', name: '용살자의 대검', slot: 'weapon', str: 70, def: 0, int: 0, price: 9000, cycle: 1 },
+  { id: 'star-staff', name: '별의 지팡이', slot: 'weapon', str: 10, def: 0, int: 70, price: 9500, cycle: 1 },
+  { id: 'shadow-fang', name: '그림자 송곳니', slot: 'weapon', str: 44, def: 0, int: 0, agi: 12, crit: 24, price: 9000, cycle: 1 },
+  { id: 'sun-greatsword', name: '태양의 대검', slot: 'weapon', str: 115, def: 0, int: 0, price: 26000, cycle: 2 },
+  { id: 'sun-staff', name: '태양의 지팡이', slot: 'weapon', str: 16, def: 0, int: 115, price: 27000, cycle: 2 },
+  { id: 'eclipse-dagger', name: '일식의 단검', slot: 'weapon', str: 72, def: 0, int: 0, agi: 18, crit: 34, price: 26000, cycle: 2 },
   // 방어구
   { id: 'cloth', name: '천옷', slot: 'armor', str: 0, def: 3, int: 0, price: 40 },
   { id: 'leather-armor', name: '가죽갑옷', slot: 'armor', str: 0, def: 8, int: 0, price: 250 },
@@ -77,6 +88,10 @@ export const EQUIPS: Equip[] = [
   { id: 'wolf-pelt', name: '늑대왕의 가죽', slot: 'armor', str: 0, def: 13, int: 0, agi: 8, price: 0, dropFrom: 'werewolf' },
   { id: 'spirit-robe', name: '정령의 로브', slot: 'armor', str: 0, def: 22, int: 16, price: 0, dropFrom: 'elf-queen' },
   { id: 'dragon-scale', name: '고룡의 비늘갑옷', slot: 'armor', str: 0, def: 46, int: 6, agi: 6, price: 0, dropFrom: 'ancient-dragon' },
+  { id: 'hero-plate', name: '용사의 갑주', slot: 'armor', str: 0, def: 78, int: 0, price: 10000, cycle: 1 },
+  { id: 'starlight-robe', name: '별빛 로브', slot: 'armor', str: 0, def: 42, int: 54, price: 10500, cycle: 1 },
+  { id: 'sun-plate', name: '태양의 갑주', slot: 'armor', str: 0, def: 125, int: 0, price: 28000, cycle: 2 },
+  { id: 'dawn-robe', name: '여명의 로브', slot: 'armor', str: 0, def: 68, int: 88, price: 29000, cycle: 2 },
   // 장신구 — 주 스텟이 아닌 민첩·치명·운을 채우는 자리
   { id: 'lucky-coin', name: '행운의 동전', slot: 'accessory', str: 0, def: 0, int: 0, luck: 8, price: 200 },
   { id: 'copper-ring', name: '구리 반지', slot: 'accessory', str: 3, def: 3, int: 0, price: 300 },
@@ -85,6 +100,9 @@ export const EQUIPS: Equip[] = [
   { id: 'sage-amulet', name: '현자의 부적', slot: 'accessory', str: 0, def: 0, int: 12, price: 1600 },
   { id: 'guardian-ring', name: '수호의 반지', slot: 'accessory', str: 6, def: 12, int: 0, price: 2200 },
   { id: 'clover-charm', name: '네잎클로버 부적', slot: 'accessory', str: 0, def: 0, int: 0, crit: 5, luck: 20, price: 2500 },
+  { id: 'lich-crown', name: '망자의 왕관', slot: 'accessory', str: 0, def: 14, int: 30, luck: 8, price: 0, dropFrom: 'lich-king' },
+  { id: 'hero-emblem', name: '영웅의 증표', slot: 'accessory', str: 12, def: 12, int: 12, agi: 8, crit: 8, price: 8000, cycle: 1 },
+  { id: 'sun-crest', name: '태양의 문장', slot: 'accessory', str: 20, def: 20, int: 20, agi: 12, crit: 12, price: 24000, cycle: 2 },
 ]
 
 export const SLOTS = [

@@ -1,8 +1,8 @@
-import { equipById, type Equip } from './data/items'
+import { equipById, type Equip, type Potion } from './data/items'
 import type { Player, StatKey } from './types'
 
 export const POINTS_PER_LEVEL = 4
-export const MAX_LEVEL = 99
+export const MAX_LEVEL = 999
 export const CRIT_MULT = 1.75
 export const DEFEND_MULT = 0.4
 export const CHARGE_MULT = 2
@@ -33,14 +33,23 @@ export const spellCost = (p: Player, mp: number) => (p.job === 'mage' ? Math.cei
 /** 두 번째 전직부터 드는 비용 */
 export const jobChangeCost = (p: Player) => (p.job ? p.level * 50 : 0)
 
-export const MAX_UPGRADE = 10
+/** 강화 상한. 회차가 오를 때마다 더 올릴 수 있다 */
+/** 포션 회복량: 고정량과 최대치 비율 중 큰 쪽 */
+export const potionHeal = (p: Player, potion: Potion) => ({
+  hp: potion.hp > 0 ? Math.max(potion.hp, Math.round(maxHp(p) * potion.pct)) : 0,
+  mp: potion.mp > 0 ? Math.max(potion.mp, Math.round(maxMp(p) * potion.pct)) : 0,
+})
+
+export const maxUpgrade = (cycle: number) => 10 + cycle * 5
 export const UPGRADE_BONUS = 0.15 // 강화 1단계당 장비 수치 증가율
 
 /** 강화가 반영된 장비 수치 */
 export const equipStat = (p: Player, e: Equip, stat: StatKey) => Math.round((e[stat] ?? 0) * (1 + UPGRADE_BONUS * (p.upgrades[e.id] ?? 0)))
 
 /** 다음 강화 단계의 비용. 보스 장비는 상점가가 없어 고정 기준가를 쓴다. */
-export const upgradeCost = (p: Player, e: Equip) => Math.max(50, Math.round((e.dropFrom ? 2500 : e.price) * 0.5 * ((p.upgrades[e.id] ?? 0) + 1)))
+/** 회차 전용 장비는 비싸지만, 강화비는 1회차 최고급 장비 수준으로 묶는다 */
+const UPGRADE_PRICE_CAP = 4000
+export const upgradeCost = (p: Player, e: Equip) => Math.max(50, Math.round((e.dropFrom ? 2500 : Math.min(e.price, UPGRADE_PRICE_CAP)) * 0.5 * ((p.upgrades[e.id] ?? 0) + 1)))
 
 /** 기본 스텟 + 착용 장비 보너스 */
 export function totalStat(p: Player, stat: StatKey): number {
