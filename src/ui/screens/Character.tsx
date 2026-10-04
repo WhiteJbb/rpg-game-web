@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { EQUIPS, POTIONS, SLOTS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
-import { JOBS, JOB_LEVEL, canTakeJob, jobById } from '../../game/data/jobs'
+import { JOBS, JOB_LEVEL, JOB_NEED, canTakeJob, jobById } from '../../game/data/jobs'
 import { Art, heroArt } from '../art'
 import { Bar, Confirm, Gold, Modal, SLOT_ICON, equipBonus, equipName } from '../common'
 import { SaveManager } from './SaveManager'
@@ -123,7 +123,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                     <small>
                       {job.passive} · <b>{job.skill.name}</b>: {job.skill.desc}
                     </small>
-                    <small className={ok || current ? 'job-ok' : 'job-need'}>조건: {job.requirement}</small>
+                    <small className={ok || current ? 'job-ok' : 'job-need'}>조건: {job.requirement}{!current && ` (지금 ${job.current(p)}/${JOB_NEED}, 장비 보너스 제외)`}</small>
                   </div>
                   {current ? (
                     <span className="owned">현재 직업</span>
