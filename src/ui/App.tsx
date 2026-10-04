@@ -6,7 +6,7 @@ import type { Action, GameState } from '../game/types'
 import { JOBS, canTakeJob, jobById } from '../game/data/jobs'
 import { monsterById } from '../game/data/monsters'
 import { Scene } from './art'
-import { setBgm } from './bgm'
+import { hasBgm, setBgm } from './bgm'
 import { Dialog, Hud, MuteButton } from './common'
 import { DEBUG, Debug, debugGame } from './Debug'
 import { sfx } from './sfx'
@@ -74,7 +74,7 @@ export function App() {
   const track =
     screen.n === 'title' || !game ? 'title' :
     screen.n === 'region' ? screen.id :
-    screen.n === 'battle' ? (monsterById(screen.monsterId).boss ? 'boss' : 'battle') :
+    screen.n === 'battle' ? (hasBgm(screen.monsterId) ? screen.monsterId : monsterById(screen.monsterId).boss ? 'boss' : 'battle') :
     screen.n === 'story' ? (screen.lines === ENDING ? 'ending' : null) :
     screen.n === 'ending' ? 'ending' :
     'town'

@@ -50,6 +50,9 @@ function apply() {
   )
 }
 
+/** 그 id의 전용 곡이 있는지 (예: 숨은 보스) */
+export const hasBgm = (id: string) => `../assets/bgm/${id}.m4a` in files
+
 /** 장면에 맞는 배경음악으로 바꾼다. 같은 곡이면 그대로 이어서 재생한다. */
 export function setBgm(id: string) {
   wanted = id
