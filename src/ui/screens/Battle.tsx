@@ -189,7 +189,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   const skill = p.job ? jobById(p.job).skill : null
   const b = game.battle
   return (
-    <Scene bg={regionId} className={`battle-scene ${anim === 'spell' ? 'flash' : ''}`}>
+    <Scene bg={artUrl('backgrounds', monsterId) ? monsterId : regionId} className={`battle-scene ${anim === 'spell' ? 'flash' : ''}`}>
       <div className="enemy">
         <div className="enemy-plate panel">
           <strong>
