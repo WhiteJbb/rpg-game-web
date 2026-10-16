@@ -55,6 +55,8 @@ const SECRET_ATK_PER_CYCLE = 0.02
 const CURVE_END = 32
 const HP_SLOPE = 62
 const ATK_SLOPE = 6.5
+/** 곡선 끝 이후 마법 저항의 기울기. 0이면 멈추고(마법사가 후반에 독주), 1.6이면 곡선 그대로(지력이 무의미) */
+const RES_SLOPE = 0.8
 const curve = (l: number, a: number, b: number, c: number, slope: number) => {
   const m = Math.min(l, CURVE_END)
   return c + b * m + a * m * m + slope * (l - m)
@@ -74,8 +76,8 @@ function build({ id, name, level, mods, specials }: Def, cycle: number): Monster
     hp: Math.round(curve(l, 0.68, 16, 25, HP_SLOPE) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1) * secretHp),
     atk: Math.round(curve(l, 0.018, 4.6, 10, ATK_SLOPE) * (mods.atk ?? 1) * (boss ? BOSS_ATK : 1) * secretAtk),
     def: Math.round((2 + 1.6 * l) * (mods.def ?? 1)),
-    // 마법 저항은 곡선 끝에서 멈춘다. 저항 공식이 비율식이라, 계속 오르면 지력을 올려도 마법 피해가 늘지 않는다
-    res: Math.round((2 + 1.6 * Math.min(l, CURVE_END)) * (mods.res ?? 1)),
+    // 마법 저항은 곡선 끝부터 완만하게. 저항 공식이 비율식이라 곡선대로 오르면 지력을 올려도 마법 피해가 늘지 않고, 멈추면 마법사가 후반에 독주한다
+    res: Math.round((2 + 1.6 * Math.min(l, CURVE_END) + RES_SLOPE * Math.max(0, l - CURVE_END)) * (mods.res ?? 1)),
     exp: Math.round((3 + 4 * Math.pow(l, 1.5)) * (boss ? 6 : 1)),
     gold: Math.round((4 + 6 * Math.pow(l, 1.2)) * (boss ? 8 : 1)),
     boss,
