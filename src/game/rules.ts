@@ -46,6 +46,9 @@ export const UPGRADE_BONUS = 0.15 // 강화 1단계당 장비 수치 증가율
 /** 강화가 반영된 장비 수치 */
 export const equipStat = (p: Player, e: Equip, stat: StatKey) => Math.round((e[stat] ?? 0) * (1 + UPGRADE_BONUS * (p.upgrades[e.id] ?? 0)))
 
+/** 강화가 반영된 장비 수치의 합 */
+export const equipWorth = (p: Player, e: Equip) => STAT_KEYS.reduce((sum, k) => sum + equipStat(p, e, k), 0)
+
 /** 새 장비가 지금 장비를 대신할 만한가: 지금 장비(강화 포함)가 주는 수치를 하나도 잃지 않고 하나는 더 높아야 한다 */
 export const outclasses = (p: Player, next: Equip, current: Equip) => {
   const diff = STAT_KEYS.map((k) => equipStat(p, next, k) - equipStat(p, current, k))

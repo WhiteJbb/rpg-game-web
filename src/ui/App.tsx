@@ -214,6 +214,7 @@ export function App() {
           act={act}
           onBattle={(monsterId) => setScreen({ n: 'battle', monsterId, regionId: screen.id, seq: Date.now() })}
           onBack={() => setScreen({ n: 'map' })}
+          onTown={() => setScreen({ n: 'town' })}
         />
       )
       break

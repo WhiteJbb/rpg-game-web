@@ -28,13 +28,15 @@ interface Props {
 }
 
 const STEPS = [1, 5, 'all'] as const
+/** 이만큼을 한 번에 넣을 때는 묻는다 (초기화에 골드가 든다) */
+const BIG_ALLOC = 20
 
 export function Character({ game, act, onClose, onReset, onImport, onNewCycle }: Props) {
   const p = game.player
   const owned = EQUIPS.filter((e) => p.owned.includes(e.id))
   const [resetting, setResetting] = useState(false)
   const [step, setStep] = useState<(typeof STEPS)[number]>(1)
-  const [asking, setAsking] = useState<null | 'respec' | 'cycle' | 'save'>(null)
+  const [asking, setAsking] = useState<null | 'respec' | 'cycle' | 'save' | { stat: StatKey; amount: number }>(null)
   // 확률 상한에 닿은 스텟은 더 못 올린다 (포인트만 버리게 된다). '전부'도 상한까지만
   const room = (k: StatKey) => (R.STAT_CAP[k] === undefined ? Infinity : Math.max(0, R.STAT_CAP[k]! - R.totalStat(p, k)))
   const amount = (k: StatKey) => Math.min(step === 'all' ? p.points : step, p.points, room(k))
@@ -59,6 +61,14 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
         />
       )}
       {asking === 'save' && <SaveManager game={game} onImport={onImport} onClose={() => setAsking(null)} />}
+      {asking !== null && typeof asking === 'object' && (
+        <Confirm
+          text={`${STATS.find((st) => st.key === asking.stat)!.name}에 ${asking.amount}포인트를 한 번에 넣을까요? 되돌리려면 ${R.respecCost(p).toLocaleString()} 골드가 듭니다.`}
+          yes="넣는다"
+          onYes={() => (act({ type: 'allocate', stat: asking.stat, amount: asking.amount }), setAsking(null))}
+          onNo={() => setAsking(null)}
+        />
+      )}
       <div className="char">
         <div className="char-left">
           <Art kind="characters" id={heroArt(p.job)} alt={p.name} className="char-art" fallback="🧑‍🌾" />
@@ -110,7 +120,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                   disabled={amount(st.key) < 1}
                   title={room(st.key) === 0 ? '더 올려도 효과가 없다' : undefined}
                   aria-label={`${st.name} 올리기`}
-                  onClick={() => act({ type: 'allocate', stat: st.key, amount: amount(st.key) })}
+                  onClick={() => (amount(st.key) >= BIG_ALLOC ? setAsking({ stat: st.key, amount: amount(st.key) }) : act({ type: 'allocate', stat: st.key, amount: amount(st.key) }))}
                 >
                   +
                 </button>
@@ -150,17 +160,21 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
 
           <h3>포션</h3>
           <div className="bag">
-            {POTIONS.map((po) => (
-              <button key={po.id} className="btn btn-item" disabled={p.potions[po.id] < 1} onClick={() => act({ type: 'usePotion', potionId: po.id })} title="마시기">
+            {POTIONS.map((po) => {
+              const heal = R.potionHeal(p, po)
+              const useless = Math.min(R.maxHp(p) - p.hp, heal.hp) + Math.min(R.maxMp(p) - p.mp, heal.mp) <= 0
+              return (
+              <button key={po.id} className="btn btn-item" disabled={p.potions[po.id] < 1 || useless} onClick={() => act({ type: 'usePotion', potionId: po.id })} title={useless ? '지금은 마실 필요가 없다' : '마시기'}>
                 <Art kind="items" id={po.id} alt="" className="icon" fallback="🧪" />
                 <span className="item-text">
                   {po.name}
                   <small>
-                    {po.hp ? `HP +${R.potionHeal(p, po).hp}` : `MP +${R.potionHeal(p, po).mp}`} · {p.potions[po.id]}개
+                    {po.hp ? `HP +${heal.hp}` : `MP +${heal.mp}`} · {p.potions[po.id]}개{useless && p.potions[po.id] > 0 && ' · 가득'}
                   </small>
                 </span>
               </button>
-            ))}
+              )
+            })}
           </div>
 
           {SLOTS.map((slot) => {
@@ -176,7 +190,10 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                     <button key={e.id} className="btn btn-item" disabled={p[e.slot] === e.id} onClick={() => act({ type: 'equip', equipId: e.id })}>
                       <Art kind="items" id={e.id} alt="" className="icon" fallback={SLOT_ICON[e.slot]} />
                       <span className="item-text">
-                        {equipName(p, e)}
+                        <span>
+                          {equipName(p, e)}
+                          {e.cycle && <span className="tag">{e.cycle + 1}회차</span>}
+                        </span>
                         <small>
                           {equipBonus(p, e)}
                           {p[e.slot] === e.id && ' · 착용 중'}
