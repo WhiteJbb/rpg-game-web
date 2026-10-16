@@ -29,7 +29,7 @@ export function Title({ hasSave, broken, onContinue, onNew }: Props) {
               start()
             }}
           >
-            <label htmlFor="name">모험가의 이름</label>
+            <label htmlFor="name">모험가의 이름 <small>(12자까지)</small></label>
             <input id="name" value={name} maxLength={12} autoFocus placeholder="모험가" onChange={(e) => setName(e.target.value)} />
             <div className="row">
               <button type="button" className="btn" onClick={() => setNaming(false)}>

@@ -3,7 +3,7 @@ import { EQUIPS, POTIONS, SLOTS, SPELLS, type Equip } from '../../game/data/item
 import * as R from '../../game/rules'
 import type { Action, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
-import { Gold, SLOT_ICON, equipBonus, equipName } from '../common'
+import { Confirm, Gold, SLOT_ICON, equipBonus, equipName, josa } from '../common'
 
 interface Props {
   game: GameState
@@ -27,12 +27,15 @@ function Shop({ bg, title, onBack, children }: { bg: string; title: string; onBa
   )
 }
 
-function Good({ id, name, desc, fallback, children }: { id: string; name: string; desc: string; fallback: string; children: ReactNode }) {
+function Good({ id, name, desc, fallback, tag, children }: { id: string; name: string; desc: string; fallback: string; tag?: string; children: ReactNode }) {
   return (
     <div className="good">
       <Art kind="items" id={id} alt="" className="good-art" fallback={fallback} />
       <div className="good-info">
-        <strong>{name}</strong>
+        <strong>
+          {name}
+          {tag && <span className="tag">{tag}</span>}
+        </strong>
         <small>{desc}</small>
       </div>
       {children}
@@ -74,13 +77,25 @@ export function MagicShop({ game, act, onBack }: Props) {
   )
 }
 
+/** 이 금액부터는 한 번 더 묻는다 (구매·강화 버튼이 같은 자리라 잘못 누르기 쉽다) */
+const BIG_SPEND = 10000
+
 export function EquipShop({ game, act, onBack }: Props) {
   const p = game.player
   const [slot, setSlot] = useState<Equip['slot']>('weapon')
+  const [showWeak, setShowWeak] = useState(false)
+  const [asking, setAsking] = useState<{ text: string; yes: string; action: Action } | null>(null)
   // 보스 전용 장비는 얻은 뒤에만 목록에 나온다
-  const list = EQUIPS.filter((e) => e.slot === slot && (!e.dropFrom || p.owned.includes(e.id)) && (e.cycle ?? 0) <= game.cycle)
+  const all = EQUIPS.filter((e) => e.slot === slot && (!e.dropFrom || p.owned.includes(e.id)) && (e.cycle ?? 0) <= game.cycle)
+  // 지금 낀 장비(강화 포함)에 모든 수치가 뒤처지거나 합이 절반도 안 되는 미보유 장비는 접어 둔다
+  const current = p[slot] ? EQUIPS.find((e) => e.id === p[slot])! : null
+  const weak = (e: Equip) => current !== null && !p.owned.includes(e.id) && (R.outclasses(p, current, e) || R.equipWorth(p, e) * 2 < R.equipWorth(p, current))
+  const hidden = all.filter(weak).length
+  const list = showWeak ? all : all.filter((e) => !weak(e))
+  const spend = (action: Action, price: number, text: string, yes: string) => (price >= BIG_SPEND ? setAsking({ text, yes, action }) : act(action))
   return (
     <Shop bg="shop-equip" title="대장간" onBack={onBack}>
+      {asking && <Confirm text={asking.text} yes={asking.yes} onYes={() => (act(asking.action), setAsking(null))} onNo={() => setAsking(null)} />}
       <div className="tabs" role="tablist">
         {SLOTS.map((s) => (
           <button key={s.id} role="tab" aria-selected={slot === s.id} className={`btn btn-small ${slot === s.id ? 'btn-primary' : ''}`} onClick={() => setSlot(s.id)}>
@@ -89,7 +104,7 @@ export function EquipShop({ game, act, onBack }: Props) {
         ))}
       </div>
       {list.map((e) => (
-        <Good key={e.id} id={e.id} name={equipName(p, e)} fallback={SLOT_ICON[e.slot]} desc={`${equipBonus(p, e)}${p[e.slot] === e.id ? ' · 착용 중' : ''}`}>
+        <Good key={e.id} id={e.id} name={equipName(p, e)} tag={e.cycle ? `${e.cycle + 1}회차` : undefined} fallback={SLOT_ICON[e.slot]} desc={`${equipBonus(p, e)}${p[e.slot] === e.id ? ' · 착용 중' : ''}`}>
           {p.owned.includes(e.id) ? (
             <div className="good-actions">
               {p[e.slot] !== e.id && (
@@ -98,7 +113,11 @@ export function EquipShop({ game, act, onBack }: Props) {
                 </button>
               )}
               {(p.upgrades[e.id] ?? 0) < R.maxUpgrade(game.cycle) ? (
-                <button className="btn btn-buy" disabled={p.gold < R.upgradeCost(p, e)} onClick={() => act({ type: 'upgradeEquip', equipId: e.id })}>
+                <button
+                  className="btn btn-buy"
+                  disabled={p.gold < R.upgradeCost(p, e)}
+                  onClick={() => spend({ type: 'upgradeEquip', equipId: e.id }, R.upgradeCost(p, e), `${e.name} +${(p.upgrades[e.id] ?? 0) + 1} 강화에 ${R.upgradeCost(p, e).toLocaleString()} 골드를 쓸까요?`, '강화')}
+                >
                   강화 <Gold amount={R.upgradeCost(p, e)} />
                 </button>
               ) : (
@@ -106,10 +125,15 @@ export function EquipShop({ game, act, onBack }: Props) {
               )}
             </div>
           ) : (
-            <BuyButton price={e.price} gold={p.gold} onClick={() => act({ type: 'buyEquip', equipId: e.id })} />
+            <BuyButton price={e.price} gold={p.gold} onClick={() => spend({ type: 'buyEquip', equipId: e.id }, e.price, `${josa(e.name, '을', '를')} ${e.price.toLocaleString()} 골드에 살까요?`, '산다')} />
           )}
         </Good>
       ))}
+      {hidden > 0 && (
+        <button className="btn btn-small goods-more" onClick={() => setShowWeak(!showWeak)}>
+          {showWeak ? '뒤처진 장비 접기' : `지금 장비보다 약한 장비 ${hidden}개 보기`}
+        </button>
+      )}
     </Shop>
   )
 }

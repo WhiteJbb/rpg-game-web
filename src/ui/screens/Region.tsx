@@ -14,11 +14,12 @@ interface Props {
   act: (a: Action) => GameState
   onBattle: (monsterId: string) => void
   onBack: () => void
+  onTown: () => void
 }
 
 type Result = Extract<GameEvent, { t: 'eventResult' }> & { eventId: string; ambush: string | null }
 
-export function Region({ game, regionId, act, onBattle, onBack }: Props) {
+export function Region({ game, regionId, act, onBattle, onBack, onTown }: Props) {
   const region = regionById(regionId)
   const progress = game.progress[regionId]
   const boss = monsterById(region.boss, game.cycle)
@@ -73,9 +74,14 @@ export function Region({ game, regionId, act, onBattle, onBack }: Props) {
             </span>
           </button>
         )}
-        <button className="btn" onClick={onBack}>
-          지도로 돌아가기
-        </button>
+        <div className="row region-nav">
+          <button className="btn" onClick={onBack}>
+            지도로
+          </button>
+          <button className="btn" onClick={onTown}>
+            🏠 마을로
+          </button>
+        </div>
       </div>
 
       {pending && (
@@ -118,6 +124,7 @@ export function Region({ game, regionId, act, onBattle, onBack }: Props) {
               </li>
             )}
             {result.levelUps > 0 && <li className="levelup">레벨 업! Lv.{game.player.level}</li>}
+            {result.gold === 0 && result.exp === 0 && result.hp === 0 && result.mp === 0 && !result.potion && <li className="empty">달라진 것은 없었다.</li>}
           </ul>
           <button className="btn btn-primary" autoFocus onClick={closeResult}>
             {result.ambush ? '싸운다!' : '계속'}
