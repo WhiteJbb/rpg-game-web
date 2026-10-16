@@ -4,8 +4,8 @@ export interface Region {
   id: string
   name: string
   desc: string
-  /** 일반 몬스터와 등장 가중치 */
-  monsters: { id: string; weight: number }[]
+  /** 일반 몬스터와 등장 가중치. cycle이 있으면 그 회차(0부터)부터 나온다 */
+  monsters: { id: string; weight: number; cycle?: number }[]
   boss: string
   /** 엔딩 이후에만 도전할 수 있는 숨은 보스. 회차마다 다음 보스로 바뀌고, 끝까지 가면 처음부터 돈다 */
   secretBosses?: string[]
@@ -21,7 +21,7 @@ export const REGIONS: Region[] = [
     id: 'meadow',
     name: '몬스터의 초원',
     desc: '곳곳에서 섬뜩한 눈빛이 느껴진다...',
-    monsters: [{ id: 'slime', weight: 50 }, { id: 'goblin', weight: 30 }, { id: 'kobold', weight: 20 }],
+    monsters: [{ id: 'slime', weight: 50 }, { id: 'goblin', weight: 30 }, { id: 'kobold', weight: 20 }, { id: 'king-slime', weight: 15, cycle: 1 }],
     boss: 'ogre',
     killsForBoss: 12,
     requires: null,
@@ -31,7 +31,7 @@ export const REGIONS: Region[] = [
     id: 'wolf-den',
     name: '늑대의 굴',
     desc: '축축한 굴 속에서 으르렁거리는 소리가 들린다...',
-    monsters: [{ id: 'wild-dog', weight: 50 }, { id: 'wolf', weight: 30 }, { id: 'alpha-wolf', weight: 20 }],
+    monsters: [{ id: 'wild-dog', weight: 50 }, { id: 'wolf', weight: 30 }, { id: 'alpha-wolf', weight: 20 }, { id: 'dire-wolf', weight: 15, cycle: 1 }],
     boss: 'werewolf',
     killsForBoss: 12,
     requires: 'meadow',
@@ -41,7 +41,7 @@ export const REGIONS: Region[] = [
     id: 'elf-forest',
     name: '엘프의 숲',
     desc: '고요한 숲에 정령들의 기척이 감돈다...',
-    monsters: [{ id: 'pixie', weight: 50 }, { id: 'dark-elf', weight: 30 }, { id: 'treant', weight: 20 }],
+    monsters: [{ id: 'pixie', weight: 50 }, { id: 'dark-elf', weight: 30 }, { id: 'treant', weight: 20 }, { id: 'forest-wraith', weight: 15, cycle: 1 }],
     boss: 'elf-queen',
     killsForBoss: 12,
     requires: 'wolf-den',
@@ -51,7 +51,7 @@ export const REGIONS: Region[] = [
     id: 'vampire-castle',
     name: '뱀파이어의 성',
     desc: '차가운 성 안에서 피 냄새가 진동한다...',
-    monsters: [{ id: 'bat', weight: 50 }, { id: 'zombie', weight: 30 }, { id: 'gargoyle', weight: 20 }],
+    monsters: [{ id: 'bat', weight: 50 }, { id: 'zombie', weight: 30 }, { id: 'gargoyle', weight: 20 }, { id: 'vampire-knight', weight: 15, cycle: 1 }],
     boss: 'vampire-lord',
     secretBosses: ['ancient-dragon', 'lich-king', 'night-avatar'],
     killsForBoss: 12,
@@ -59,6 +59,9 @@ export const REGIONS: Region[] = [
     drops: [{ id: 'hp-m', chance: 0.25 }, { id: 'hp-l', chance: 0.08 }, { id: 'mp', chance: 0.12 }],
   },
 ]
+
+/** 이 회차에 지역에 나오는 일반 몬스터 */
+export const regionMonsters = (r: Region, cycle: number) => r.monsters.filter((m) => (m.cycle ?? 0) <= cycle)
 
 export const secretBossOf = (r: Region, cycle: number) => r.secretBosses?.[cycle % r.secretBosses.length]
 

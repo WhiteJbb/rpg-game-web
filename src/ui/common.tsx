@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import type { Equip } from '../game/data/items'
+import type { Equip, Potion } from '../game/data/items'
 import * as R from '../game/rules'
 import type { Player } from '../game/types'
 import { Art } from './art'
@@ -38,6 +38,12 @@ export const equipBonus = (p: Player, e: Equip) =>
     .filter(([, key]) => e[key])
     .map(([label, key]) => `${label} +${R.equipStat(p, e, key)}`)
     .join(' · ')
+
+/** 포션 회복량 한 줄: 'HP +60' / 'MP +40' / 'HP·MP 전부' */
+export const potionDesc = (p: Player, po: Potion) => {
+  const h = R.potionHeal(p, po)
+  return po.hp && po.mp ? `HP +${h.hp} · MP +${h.mp}` : po.hp ? `HP +${h.hp}` : `MP +${h.mp}`
+}
 
 export const SLOT_ICON = { weapon: '🗡️', armor: '🛡️', accessory: '💍' } as const
 

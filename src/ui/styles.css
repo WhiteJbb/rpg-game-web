@@ -302,7 +302,9 @@ input {
 .spell-fx-fireball, .spell-fx-meteor { filter: drop-shadow(0 0 22px #ff7a2e); }
 .spell-fx-ice-spear { filter: drop-shadow(0 0 22px #7fd4ff); }
 .spell-fx-wind-cutter { filter: drop-shadow(0 0 22px #8ff0a0); }
-.spell-fx-lightning-bolt { filter: drop-shadow(0 0 26px #fff27a); }
+.spell-fx-lightning-bolt, .spell-fx-thunder-storm { filter: drop-shadow(0 0 26px #fff27a); }
+.spell-fx-frost-nova { filter: drop-shadow(0 0 26px #a8e4ff); }
+.spell-fx-supernova { filter: drop-shadow(0 0 30px #ffb347) drop-shadow(0 0 12px #fff); animation-name: spell-meteor; }
 .spell-fx-meteor { animation-name: spell-meteor; }
 @keyframes spell-meteor {
   0% { transform: translate(40%, -260%) scale(0.6) rotate(20deg); opacity: 0; }

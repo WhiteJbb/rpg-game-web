@@ -84,11 +84,11 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
       act({ type: 'upgradeEquip', equipId: target.id })
     }
     if (build === 'mage') {
-      const spell = SPELLS.filter((sp) => !p().spells.includes(sp.id) && sp.price <= p().gold * 0.8).sort((a, b) => b.power - a.power)[0]
+      const spell = SPELLS.filter((sp) => !p().spells.includes(sp.id) && (sp.cycle ?? 0) <= s.cycle && sp.price <= p().gold * 0.8).sort((a, b) => b.power - a.power)[0]
       if (spell) act({ type: 'buySpell', spellId: spell.id })
     }
     if ((p().hp < R.maxHp(p()) * 0.7 || p().mp < R.maxMp(p()) * 0.5) && p().gold >= R.restCost(p())) act({ type: 'rest' })
-    const hpPotion = [...POTIONS].filter((x) => x.hp > 0 && x.hp <= Math.max(60, R.maxHp(p()) * 0.7)).pop()!
+    const hpPotion = [...POTIONS].filter((x) => !x.cycle && x.hp > 0 && x.hp <= Math.max(60, R.maxHp(p()) * 0.7)).pop()!
     while (p().potions[hpPotion.id] < 4 && p().gold >= hpPotion.price) act({ type: 'buyPotion', potionId: hpPotion.id })
     if (build === 'mage') while (p().potions.mp < 3 && p().gold >= 70) act({ type: 'buyPotion', potionId: 'mp' })
   }

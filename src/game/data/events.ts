@@ -25,6 +25,8 @@ export interface EventDef {
   text: string
   /** 다쳤을 때만 등장 */
   onlyWhenHurt?: boolean
+  /** 이 지역에서만 등장 */
+  regionId?: string
   /** 마지막 선택지는 항상 비용 없이 지나갈 수 있어야 한다 */
   choices: Choice[]
 }
@@ -65,12 +67,13 @@ export const EVENTS: EventDef[] = [
     choices: [
       {
         label: '수상한 물약을 산다',
-        cost: { gold: 3 },
+        cost: { gold: 1.5 },
         outcomes: [
-          { weight: 45, text: '제법 쓸 만한 포션이었다.', potion: 'hp-m' },
-          { weight: 25, text: '푸른빛이 도는 MP 포션이었다.', potion: 'mp' },
-          { weight: 15, text: '이건... 최고급 포션이잖아! 상인이 뒤늦게 아까워한다.', potion: 'hp-l' },
-          { weight: 15, text: '그냥 맹물이었다. 상인은 벌써 저만치 달아났다.' },
+          { weight: 40, text: '제법 쓸 만한 포션이었다.', potion: 'hp-m' },
+          { weight: 20, text: '푸른빛이 도는 MP 포션이었다.', potion: 'mp' },
+          { weight: 20, text: '이건... 최고급 포션이잖아! 상인이 뒤늦게 아까워한다.', potion: 'hp-l' },
+          { weight: 8, text: '금빛으로 일렁이는 엘릭서였다! 상인이 울상을 짓는다.', potion: 'elixir' },
+          { weight: 12, text: '그냥 맹물이었다. 상인은 벌써 저만치 달아났다.' },
         ],
       },
       pass('거절한다', '"쳇, 안목이 없구먼." 상인은 투덜대며 떠났다.'),
@@ -130,6 +133,75 @@ export const EVENTS: EventDef[] = [
         ],
       },
       pass('지나간다', '석상이 뒤통수를 노려보는 기분이 든다.'),
+    ],
+  },
+  // 지역 전용 사건
+  {
+    id: 'beehive',
+    title: '벌집',
+    text: '나뭇가지에 커다란 벌집이 매달려 있다. 꿀 냄새가 달콤하다.',
+    regionId: 'meadow',
+    choices: [
+      {
+        label: '꿀을 딴다',
+        outcomes: [
+          { weight: 60, text: '달콤한 꿀이 한가득. 기운이 난다.', hp: 0.3 },
+          { weight: 40, text: '벌떼가 쏟아져 나왔다! 온몸이 퉁퉁 부었다.', hp: -0.12 },
+        ],
+      },
+      pass('멀찍이 돌아간다', '벌들이 바쁘게 드나든다. 방해하지 않기로 했다.'),
+    ],
+  },
+  {
+    id: 'bones',
+    title: '사냥꾼의 유품',
+    text: '굴 구석에 사냥꾼의 배낭이 놓여 있다. 주인은... 보이지 않는다.',
+    regionId: 'wolf-den',
+    choices: [
+      {
+        label: '배낭을 뒤진다',
+        outcomes: [
+          { weight: 50, text: '주머니에 모아 둔 사냥 수입이 그대로 있었다.', gold: 5 },
+          { weight: 30, text: '쓰지 못한 포션이 하나 남아 있었다.', potion: 'hp-m' },
+          { weight: 20, text: '배낭 주인을 잡아먹은 녀석이 아직 여기 있었다!', ambush: true },
+        ],
+      },
+      { label: '묵념하고 지나간다', outcomes: [{ weight: 1, text: '유품은 그대로 두었다. 사냥꾼이 남긴 발자국에서 굴을 다니는 요령을 배웠다.', exp: 4 }] },
+    ],
+  },
+  {
+    id: 'fairy-ring',
+    title: '요정의 고리',
+    text: '버섯이 둥글게 자라 있다. 가운데에 서면 무슨 일이 생길 것 같다.',
+    regionId: 'elf-forest',
+    choices: [
+      {
+        label: '고리 안에 선다',
+        outcomes: [
+          { weight: 45, text: '정령들의 속삭임이 머릿속을 채운다. MP가 가득 찼다.', mp: 1 },
+          { weight: 30, text: '숲의 오래된 기억이 흘러든다.', exp: 10 },
+          { weight: 25, text: '픽시들의 장난에 걸렸다! 한참을 빙글빙글 돌다 넘어졌다.', hp: -0.1 },
+        ],
+      },
+      pass('밟지 않고 지나간다', '버섯 하나가 삐죽 고개를 돌린 것 같았다.'),
+    ],
+  },
+  {
+    id: 'coffin',
+    title: '닫힌 관',
+    text: '복도 한가운데 관이 놓여 있다. 안에서 톡, 톡 소리가 난다.',
+    regionId: 'vampire-castle',
+    choices: [
+      {
+        label: '뚜껑을 연다',
+        outcomes: [
+          { weight: 40, text: '관 속에 부장품이 가득 묻혀 있었다.', gold: 6 },
+          { weight: 20, text: '망자의 품에서 최고급 포션이 나왔다.', potion: 'hp-l' },
+          { weight: 40, text: '관 속의 것이 눈을 떴다!', ambush: true },
+        ],
+      },
+      { label: '못을 박아 둔다', outcomes: [{ weight: 1, text: '톡톡 소리가 멎었다. 왠지 뿌듯하다.', exp: 8 }] },
+      pass('지나간다', '소리는 점점 작아졌다. 뒤돌아보지 않기로 했다.'),
     ],
   },
 ]

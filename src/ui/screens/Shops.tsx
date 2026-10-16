@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { EQUIPS, POTIONS, SLOTS, SPELLS, type Equip } from '../../game/data/items'
+import { potionDesc } from '../common'
 import * as R from '../../game/rules'
 import type { Action, GameState } from '../../game/types'
 import { Art, Scene } from '../art'
@@ -55,8 +56,8 @@ export function PotionShop({ game, act, onBack }: Props) {
   const p = game.player
   return (
     <Shop bg="shop-potion" title="물약상점" onBack={onBack}>
-      {POTIONS.map((po) => (
-        <Good key={po.id} id={po.id} name={po.name} fallback="🧪" desc={`${po.hp ? `HP +${R.potionHeal(p, po).hp}` : `MP +${R.potionHeal(p, po).mp}`} · 보유 ${p.potions[po.id]}`}>
+      {POTIONS.filter((po) => (po.cycle ?? 0) <= game.cycle).map((po) => (
+        <Good key={po.id} id={po.id} name={po.name} tag={po.cycle ? `${po.cycle + 1}회차` : undefined} fallback="🧪" desc={`${potionDesc(p, po)} · 보유 ${p.potions[po.id]}`}>
           <BuyButton price={po.price} gold={p.gold} onClick={() => act({ type: 'buyPotion', potionId: po.id })} />
         </Good>
       ))}
@@ -68,8 +69,8 @@ export function MagicShop({ game, act, onBack }: Props) {
   const p = game.player
   return (
     <Shop bg="shop-magic" title="마법상점" onBack={onBack}>
-      {SPELLS.map((sp) => (
-        <Good key={sp.id} id={sp.id} name={sp.name} fallback="✨" desc={`위력 ${sp.power} · MP ${sp.mp} · ${sp.desc}`}>
+      {SPELLS.filter((sp) => (sp.cycle ?? 0) <= game.cycle).map((sp) => (
+        <Good key={sp.id} id={sp.id} name={sp.name} tag={sp.cycle ? `${sp.cycle + 1}회차` : undefined} fallback="✨" desc={`위력 ${sp.power} · MP ${sp.mp} · ${sp.desc}`}>
           {p.spells.includes(sp.id) ? <span className="owned">습득함</span> : <BuyButton price={sp.price} gold={p.gold} onClick={() => act({ type: 'buySpell', spellId: sp.id })} />}
         </Good>
       ))}

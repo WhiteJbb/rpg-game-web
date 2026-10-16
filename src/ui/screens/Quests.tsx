@@ -1,5 +1,5 @@
 import { potionById } from '../../game/data/items'
-import { QUESTS, questTarget } from '../../game/data/quests'
+import { QUESTS, questGold, questTarget } from '../../game/data/quests'
 import { isQuestDone, isQuestVisible } from '../../game/engine'
 import type { Action, GameState } from '../../game/types'
 import { Bar, Gold, Modal } from '../common'
@@ -32,7 +32,7 @@ export function Quests({ game, act, onClose }: Props) {
                 <Bar kind="exp" value={state.progress} max={questTarget(q)} />
               </div>
               <div className="quest-reward">
-                <Gold amount={q.reward.gold} />
+                <Gold amount={questGold(q, game.cycle)} />
                 {q.reward.points && <span>스텟 +{q.reward.points}</span>}
                 {q.reward.potion && <span>{potionById(q.reward.potion).name}</span>}
               </div>

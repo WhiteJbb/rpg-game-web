@@ -8,6 +8,8 @@ export interface Potion {
   /** 최대치 대비 최소 회복 비율. 레벨이 높아져도 포션이 쓸모 있게 한다 */
   pct: number
   price: number
+  /** 이 회차(0부터)에 들어서야 상점에 나온다 */
+  cycle?: number
 }
 
 export const POTIONS: Potion[] = [
@@ -15,6 +17,8 @@ export const POTIONS: Potion[] = [
   { id: 'hp-m', name: 'HP 포션(중)', hp: 200, mp: 0, pct: 0.25, price: 90 },
   { id: 'hp-l', name: 'HP 포션(대)', hp: 600, mp: 0, pct: 0.5, price: 300 },
   { id: 'mp', name: 'MP 포션', hp: 0, mp: 60, pct: 0.2, price: 70 },
+  // 2회차부터. 비싸지만 전부 회복 — 쌓이는 골드의 쓸 곳
+  { id: 'elixir', name: '엘릭서', hp: 1, mp: 1, pct: 1, price: 1500, cycle: 1 },
 ]
 
 export interface Spell {
@@ -28,6 +32,8 @@ export interface Spell {
   /** 효과가 걸릴 확률 (pierce는 항상) */
   chance: number
   desc: string
+  /** 이 회차(0부터)에 들어서야 상점에 나온다 */
+  cycle?: number
 }
 
 export const SPELLS: Spell[] = [
@@ -36,6 +42,10 @@ export const SPELLS: Spell[] = [
   { id: 'ice-spear', name: '아이스스피어', mp: 12, power: 44, price: 450, effect: 'chill', chance: 1, desc: '적 공격 약화' },
   { id: 'lightning-bolt', name: '라이트닝볼트', mp: 20, power: 58, price: 1400, effect: 'stun', chance: 0.35, desc: '가끔 기절' },
   { id: 'meteor', name: '메테오', mp: 38, power: 90, price: 4500, effect: 'burn', chance: 1, desc: '반드시 화상' },
+  // 회차 마법 — 2회차부터 마법사가 살 것이 생긴다
+  { id: 'frost-nova', name: '프로스트노바', mp: 48, power: 130, price: 15000, effect: 'chill', chance: 1, desc: '적 공격 약화', cycle: 1 },
+  { id: 'thunder-storm', name: '썬더스톰', mp: 56, power: 145, price: 18000, effect: 'stun', chance: 0.5, desc: '절반 확률로 기절', cycle: 1 },
+  { id: 'supernova', name: '초신성', mp: 90, power: 240, price: 45000, effect: 'burn', chance: 1, desc: '반드시 화상', cycle: 2 },
 ]
 
 export interface Equip {

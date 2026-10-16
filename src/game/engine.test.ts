@@ -7,6 +7,8 @@ import { SECRET_CLEAR } from './data/story'
 import { EVENTS } from './data/events'
 import { QUESTS } from './data/quests'
 import { canChallengeBoss, canChallengeSecret, isQuestDone, isQuestVisible, isRegionOpen, newBattle, newGame, reduce } from './engine'
+import { questGold } from './data/quests'
+import { regionMonsters } from './data/regions'
 import * as R from './rules'
 import { deserialize, exportSave, importSave, serialize } from './save'
 import type { GameState } from './types'
@@ -441,6 +443,41 @@ describe('engine', () => {
     expect(importSave('  ' + exportSave(s) + '\n')).toEqual(s)
     expect(importSave('이건 세이브가 아니다')).toBeNull()
     expect(importSave(btoa('{"version":1}'))).toBeNull()
+  })
+
+  it('회차 콘텐츠: 의뢰 골드는 회차 몬스터에 비례, 회차 포션·마법은 그 회차부터, 변종 몬스터·지역 사건은 제자리에서만', () => {
+    const hunt = QUESTS.find((q) => q.id === 'meadow-hunt')!
+    expect(questGold(hunt, 0)).toBe(hunt.reward.gold)
+    expect(questGold(hunt, 1)).toBeGreaterThan(hunt.reward.gold * 10)
+    const secret = QUESTS.find((q) => q.id === 'secret-boss')!
+    expect(questGold(secret, 2)).toBe(secret.reward.gold * 3)
+
+    const s = newGame('t')
+    s.player.gold = 999999
+    expect(errorOf(reduce(s, { type: 'buyPotion', potionId: 'elixir' }, seeded(1)))).toBeTruthy()
+    expect(errorOf(reduce(s, { type: 'buySpell', spellId: 'frost-nova' }, seeded(1)))).toBeTruthy()
+    s.cycle = 1
+    let n = reduce(s, { type: 'buyPotion', potionId: 'elixir' }, seeded(1))
+    expect(n.player.potions.elixir).toBe(1)
+    n.player.hp = 1
+    n.player.mp = 0
+    n = reduce(n, { type: 'usePotion', potionId: 'elixir' }, seeded(1))
+    expect([n.player.hp, n.player.mp]).toEqual([R.maxHp(n.player), R.maxMp(n.player)])
+    expect(errorOf(reduce(s, { type: 'buySpell', spellId: 'frost-nova' }, seeded(1)))).toBeUndefined()
+    expect(errorOf(reduce(s, { type: 'buySpell', spellId: 'supernova' }, seeded(1)))).toBeTruthy()
+
+    const meadow = REGIONS[0]
+    expect(regionMonsters(meadow, 0).map((m) => m.id)).not.toContain('king-slime')
+    expect(regionMonsters(meadow, 1).map((m) => m.id)).toContain('king-slime')
+    // 100번 탐색해도 1회차 초원에는 변종이 없고 다른 지역 사건이 없다
+    const seen = new Set<string>()
+    for (let i = 0; i < 100; i++) {
+      const r = reduce(s, { type: 'explore', regionId: 'meadow' }, seeded(i))
+      for (const e of r.events) if (e.t === 'encounter') seen.add(e.monsterId)
+      if (r.pending) seen.add(r.pending.eventId)
+    }
+    expect(seen.has('coffin') || seen.has('bones') || seen.has('fairy-ring')).toBe(false)
+    expect(seen.has('beehive')).toBe(true)
   })
 
   it('데이터의 id 참조가 모두 유효하다', () => {

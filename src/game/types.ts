@@ -1,6 +1,6 @@
 export type StatKey = 'str' | 'agi' | 'def' | 'int' | 'crit' | 'luck'
 export const STAT_KEYS: StatKey[] = ['str', 'agi', 'def', 'int', 'crit', 'luck']
-export type PotionId = 'hp-s' | 'hp-m' | 'hp-l' | 'mp'
+export type PotionId = 'hp-s' | 'hp-m' | 'hp-l' | 'mp' | 'elixir'
 export type Rng = () => number
 
 export interface Player {
