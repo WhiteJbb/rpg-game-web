@@ -115,7 +115,7 @@ export function Debug({ game, screen, patch, goto, onReset }: Props) {
                   patch((g) => {
                     g.player.owned = EQUIPS.map((e) => e.id)
                     g.player.spells = SPELLS.map((s) => s.id)
-                    g.player.potions = { 'hp-s': 99, 'hp-m': 99, 'hp-l': 99, mp: 99 }
+                    g.player.potions = { 'hp-s': 99, 'hp-m': 99, 'hp-l': 99, mp: 99, elixir: 9 }
                   })
                 }
               >

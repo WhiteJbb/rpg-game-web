@@ -26,6 +26,8 @@ interface Mods {
   def?: number
   res?: number
   boss?: boolean
+  /** 숨은 보스: 회차마다 보스 배율이 더 붙는다 (회차 장비·강화로 강해진 플레이어를 따라가도록) */
+  secret?: boolean
 }
 
 interface Def {
@@ -43,6 +45,8 @@ export const CYCLE_LEVELS = 26
 
 const BOSS_HP = 2.6
 const BOSS_ATK = 1.2
+const SECRET_HP_PER_CYCLE = 0.04
+const SECRET_ATK_PER_CYCLE = 0.02
 
 /**
  * 1회차 범위(숨은 보스 레벨)까지는 제곱 곡선, 그 뒤로는 직선으로 오른다. 플레이어의 성장(레벨당 스텟, 강화)이
@@ -60,13 +64,15 @@ const curve = (l: number, a: number, b: number, c: number, slope: number) => {
 function build({ id, name, level, mods, specials }: Def, cycle: number): Monster {
   const boss = mods.boss ?? false
   const l = level + cycle * CYCLE_LEVELS
+  const secretHp = mods.secret ? 1 + SECRET_HP_PER_CYCLE * cycle : 1
+  const secretAtk = mods.secret ? 1 + SECRET_ATK_PER_CYCLE * cycle : 1
   return {
     id,
     name,
     level: l,
     // 제곱 항은 전직(Lv.10) 이후 강해지는 플레이어를 따라가기 위한 것
-    hp: Math.round(curve(l, 0.68, 16, 25, HP_SLOPE) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1)),
-    atk: Math.round(curve(l, 0.018, 4.6, 10, ATK_SLOPE) * (mods.atk ?? 1) * (boss ? BOSS_ATK : 1)),
+    hp: Math.round(curve(l, 0.68, 16, 25, HP_SLOPE) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1) * secretHp),
+    atk: Math.round(curve(l, 0.018, 4.6, 10, ATK_SLOPE) * (mods.atk ?? 1) * (boss ? BOSS_ATK : 1) * secretAtk),
     def: Math.round((2 + 1.6 * l) * (mods.def ?? 1)),
     // 마법 저항은 곡선 끝에서 멈춘다. 저항 공식이 비율식이라, 계속 오르면 지력을 올려도 마법 피해가 늘지 않는다
     res: Math.round((2 + 1.6 * Math.min(l, CURVE_END)) * (mods.res ?? 1)),
@@ -107,17 +113,31 @@ const DEFS: Def[] = [
     { kind: 'charge', name: '피의 만찬', chance: 0.3 },
     { kind: 'drain', name: '흡혈', chance: 0.3 },
   ]),
+  // 2회차부터 섞여 나오는 변종 — 지역의 희귀 몬스터보다 한 단계 위
+  mk('king-slime', '킹슬라임', 4, { hp: 1.5, atk: 1.1, def: 0.8 }, [{ kind: 'heavy', name: '몸통 박치기', chance: 0.3 }]),
+  mk('dire-wolf', '다이어울프', 10, { hp: 1.2, atk: 1.2 }, [
+    { kind: 'double', name: '연속 물기', chance: 0.3 },
+    { kind: 'heavy', name: '덮치기', chance: 0.2 },
+  ]),
+  mk('forest-wraith', '숲의 망령', 17, { hp: 0.9, def: 0.8, res: 1.8 }, [
+    { kind: 'drain', name: '생기 흡수', chance: 0.3 },
+    { kind: 'poison', name: '썩은 숨결', chance: 0.2 },
+  ]),
+  mk('vampire-knight', '흡혈 기사', 24, { hp: 1.2, atk: 1.1, def: 1.3 }, [
+    { kind: 'charge', name: '핏빛 찌르기', chance: 0.25 },
+    { kind: 'drain', name: '흡혈', chance: 0.25 },
+  ]),
   // 엔딩 이후의 숨은 보스
-  mk('ancient-dragon', '고룡', 32, { boss: true, hp: 1.15 }, [
+  mk('ancient-dragon', '고룡', 32, { boss: true, secret: true, hp: 1.15 }, [
     { kind: 'charge', name: '멸망의 숨결', chance: 0.35 },
     { kind: 'heavy', name: '꼬리 휩쓸기', chance: 0.25 },
   ]),
-  mk('lich-king', '망자의 왕', 32, { boss: true, hp: 1.05, res: 1.8 }, [
+  mk('lich-king', '망자의 왕', 32, { boss: true, secret: true, hp: 1.2, atk: 1.05, res: 1.8 }, [
     { kind: 'charge', name: '죽음의 선고', chance: 0.3 },
     { kind: 'drain', name: '영혼 흡수', chance: 0.25 },
     { kind: 'poison', name: '역병', chance: 0.2 },
   ]),
-  mk('night-avatar', '밤의 화신', 32, { boss: true, hp: 1.2, def: 1.3, res: 1.3 }, [
+  mk('night-avatar', '밤의 화신', 32, { boss: true, secret: true, hp: 1.2, def: 1.3, res: 1.3 }, [
     { kind: 'charge', name: '끝없는 밤', chance: 0.35 },
     { kind: 'stun', name: '별의 추락', chance: 0.2 },
     { kind: 'double', name: '초승달 베기', chance: 0.25 },

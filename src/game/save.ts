@@ -20,7 +20,10 @@ export function deserialize(raw: string | null): GameState | null {
     const s = JSON.parse(raw) as GameState
     const p = s?.player
     if (s.version !== VERSION || typeof p?.name !== 'string') return null
-    if (![p.level, p.exp, p.hp, p.mp, p.gold, p.points, ...STAT_KEYS.map((k) => p.stats?.[k]), ...POTIONS.map((po) => p.potions?.[po.id])].every(isNum)) return null
+    if (![p.level, p.exp, p.hp, p.mp, p.gold, p.points, ...STAT_KEYS.map((k) => p.stats?.[k])].every(isNum)) return null
+    if (typeof p.potions !== 'object' || p.potions === null) return null
+    // 나중에 추가된 포션은 0개로
+    for (const po of POTIONS) if (!isNum(p.potions[po.id])) p.potions[po.id] = 0
     if (!Array.isArray(p.spells) || !Array.isArray(p.owned)) return null
     if (!REGIONS.every((r) => isNum(s.progress?.[r.id]?.kills))) return null
     if (typeof p.upgrades !== 'object' || p.upgrades === null) p.upgrades = {}

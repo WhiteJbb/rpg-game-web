@@ -5,7 +5,7 @@ import * as R from '../../game/rules'
 import type { Action, GameEvent, GameState, StatusKind, Victory } from '../../game/types'
 import { jobById } from '../../game/data/jobs'
 import { Art, Scene, artUrl, heroArt } from '../art'
-import { Bar, Gold, Modal, josa } from '../common'
+import { Bar, Gold, Modal, josa, potionDesc } from '../common'
 import { sfx } from '../sfx'
 
 export type BattleOutcome = { type: 'victory'; victory: Victory } | { type: 'defeat' } | { type: 'fled' }
@@ -107,7 +107,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
       case 'potion':
         setCaption(`${josa(potionById(e.potionId).name, '을', '를')} 마셨다.`)
         sfx('heal')
-        pop('player', e.hp > 0 ? `+${e.hp}` : `+${e.mp} MP`, 'heal')
+        pop('player', e.hp > 0 && e.mp > 0 ? '전부 회복!' : e.hp > 0 ? `+${e.hp}` : `+${e.mp} MP`, 'heal')
         setShown((s) => ({ ...s, php: s.php + e.hp, pmp: s.pmp + e.mp }))
         return wait(600)
       case 'status':
@@ -315,13 +315,13 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
           )}
           {menu === 'potion' && (
             <div className="actions actions-list">
-              {POTIONS.map((po) => (
+              {POTIONS.filter((po) => !po.cycle || p.potions[po.id] > 0).map((po) => (
                 <button key={po.id} className="btn btn-item" disabled={locked || p.potions[po.id] < 1} onClick={() => run({ type: 'usePotion', potionId: po.id })}>
                   <Art kind="items" id={po.id} alt="" className="icon" fallback="🧪" />
                   <span className="item-text">
                     {po.name}
                     <small>
-                      {po.hp ? `HP +${R.potionHeal(p, po).hp}` : `MP +${R.potionHeal(p, po).mp}`} · {p.potions[po.id]}개
+                      {potionDesc(p, po)} · {p.potions[po.id]}개
                     </small>
                   </span>
                 </button>

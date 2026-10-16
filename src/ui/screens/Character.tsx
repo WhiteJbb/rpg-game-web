@@ -4,7 +4,7 @@ import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
 import { JOBS, JOB_LEVEL, JOB_NEED, canTakeJob, jobById } from '../../game/data/jobs'
 import { Art, heroArt } from '../art'
-import { Bar, Confirm, Gold, Modal, SLOT_ICON, equipBonus, equipName } from '../common'
+import { Bar, Confirm, Gold, Modal, SLOT_ICON, equipBonus, equipName, potionDesc } from '../common'
 import { SaveManager } from './SaveManager'
 
 const pct = (n: number) => `${Math.round(n * 100)}%`
@@ -160,7 +160,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
 
           <h3>포션</h3>
           <div className="bag">
-            {POTIONS.map((po) => {
+            {POTIONS.filter((po) => !po.cycle || p.potions[po.id] > 0).map((po) => {
               const heal = R.potionHeal(p, po)
               const useless = Math.min(R.maxHp(p) - p.hp, heal.hp) + Math.min(R.maxMp(p) - p.mp, heal.mp) <= 0
               return (
@@ -169,7 +169,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                 <span className="item-text">
                   {po.name}
                   <small>
-                    {po.hp ? `HP +${heal.hp}` : `MP +${heal.mp}`} · {p.potions[po.id]}개{useless && p.potions[po.id] > 0 && ' · 가득'}
+                    {potionDesc(p, po)} · {p.potions[po.id]}개{useless && p.potions[po.id] > 0 && ' · 가득'}
                   </small>
                 </span>
               </button>

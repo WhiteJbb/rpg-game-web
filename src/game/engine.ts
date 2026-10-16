@@ -2,8 +2,8 @@ import { EVENTS, eventById, type Choice } from './data/events'
 import { EQUIPS, equipById, potionById, spellById } from './data/items'
 import { canTakeJob, jobById } from './data/jobs'
 import { monsterById, type Monster, type Special } from './data/monsters'
-import { QUESTS, questById, questTarget } from './data/quests'
-import { REGIONS, regionById, secretBossOf } from './data/regions'
+import { QUESTS, questById, questGold, questTarget } from './data/quests'
+import { REGIONS, regionById, regionMonsters, secretBossOf } from './data/regions'
 import * as R from './rules'
 import type { Action, Battle, GameEvent, GameState, Player, PotionId, Rng } from './types'
 
@@ -22,7 +22,7 @@ export function newGame(name: string): GameState {
     gold: 50,
     stats: { ...BASE_STATS },
     points: 5,
-    potions: { 'hp-s': 3, 'hp-m': 0, 'hp-l': 0, mp: 1 },
+    potions: { 'hp-s': 3, 'hp-m': 0, 'hp-l': 0, mp: 1, elixir: 0 },
     spells: ['fireball'],
     owned: [],
     weapon: null,
@@ -119,12 +119,12 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const region = regionById(action.regionId)
       if (rng() < R.EVENT_CHANCE) {
         const hurt = p.hp < R.maxHp(p) || p.mp < R.maxMp(p)
-        const pool = EVENTS.filter((e) => hurt || !e.onlyWhenHurt)
+        const pool = EVENTS.filter((e) => (hurt || !e.onlyWhenHurt) && (!e.regionId || e.regionId === region.id))
         const ev = pool[Math.floor(rng() * pool.length)]
         s.pending = { eventId: ev.id, regionId: region.id }
         emit({ t: 'event', eventId: ev.id })
       } else {
-        startBattle(pickWeighted(rng, region.monsters).id, region.id)
+        startBattle(pickWeighted(rng, regionMonsters(region, s.cycle)).id, region.id)
       }
       return s
     }
@@ -154,7 +154,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const levelUps = gainExp(p, exp)
       s.pending = null
       emit({ t: 'eventResult', text: o.text, gold, hp, mp, exp, potion: o.potion ?? null, levelUps })
-      if (o.ambush) startBattle(pickWeighted(rng, region.monsters).id, region.id)
+      if (o.ambush) startBattle(pickWeighted(rng, regionMonsters(region, s.cycle)).id, region.id)
       return s
     }
 
@@ -177,7 +177,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       if (state.claimed) return fail('이미 보상을 받았습니다')
       if (!isQuestDone(s, quest.id)) return fail('아직 완료하지 못했습니다')
       state.claimed = true
-      p.gold += quest.reward.gold
+      p.gold += questGold(quest, s.cycle)
       p.points += quest.reward.points ?? 0
       if (quest.reward.potion) p.potions[quest.reward.potion]++
       emit({ t: 'questClaimed', id: quest.id })
@@ -186,6 +186,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
 
     case 'buyPotion': {
       const potion = potionById(action.potionId)
+      if ((potion.cycle ?? 0) > s.cycle) return fail('상점에서 팔지 않는 포션입니다')
       if (!spend(potion.price)) return fail('골드가 부족합니다')
       p.potions[potion.id]++
       emit({ t: 'bought', id: potion.id })
@@ -195,6 +196,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
     case 'buySpell': {
       const spell = spellById(action.spellId)
       if (p.spells.includes(spell.id)) return fail('이미 배운 마법입니다')
+      if ((spell.cycle ?? 0) > s.cycle) return fail('상점에서 팔지 않는 마법입니다')
       if (!spend(spell.price)) return fail('골드가 부족합니다')
       p.spells.push(spell.id)
       emit({ t: 'bought', id: spell.id })

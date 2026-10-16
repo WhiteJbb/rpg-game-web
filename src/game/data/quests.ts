@@ -21,6 +21,13 @@ export interface Quest {
   reward: { gold: number; points?: number; potion?: PotionId }
 }
 
+/** 회차에 맞춘 골드 보상. 몬스터 의뢰는 그 회차 몬스터의 골드 비율로, 나머지는 회차 배수로 */
+export const questGold = (q: Quest, cycle: number) => {
+  const g = q.goal
+  const scale = g.kind === 'kill' || g.kind === 'boss' ? monsterById(g.monsterId, cycle).gold / monsterById(g.monsterId).gold : 1 + cycle
+  return Math.round(q.reward.gold * scale)
+}
+
 export const questTarget = (q: Quest) => (q.goal.kind === 'boss' || q.goal.kind === 'secret' ? 1 : q.goal.count)
 
 // 지역마다 사냥 의뢰 2개 + 보스 토벌 1개
