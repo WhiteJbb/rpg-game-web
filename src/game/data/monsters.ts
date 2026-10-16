@@ -129,8 +129,8 @@ const DEFS: Def[] = [
     { kind: 'charge', name: '핏빛 찌르기', chance: 0.25 },
     { kind: 'drain', name: '흡혈', chance: 0.25 },
   ]),
-  // 엔딩 이후의 숨은 보스
-  mk('ancient-dragon', '고룡', 32, { boss: true, secret: true, hp: 1.15 }, [
+  // 엔딩 이후의 숨은 보스. 고룡은 비늘이 두꺼운 대신 마법에 약하다 (마법사는 HP 보정이 없어 긴 보스전에서 불리한 것을 여기서 맞춘다)
+  mk('ancient-dragon', '고룡', 32, { boss: true, secret: true, hp: 1.15, res: 0.4 }, [
     { kind: 'charge', name: '멸망의 숨결', chance: 0.35 },
     { kind: 'heavy', name: '꼬리 휩쓸기', chance: 0.25 },
   ]),
