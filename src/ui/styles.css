@@ -114,6 +114,11 @@ button:disabled { cursor: not-allowed; }
 .mute { flex-shrink: 0; padding: 4px 8px; }
 .mute-float { position: absolute; z-index: 6; top: 8px; right: 8px; }
 
+/* 빠른 전투에서는 CSS 연출도 같은 비율로 줄인다 */
+.fast .monster-hit .enemy-art, .fast .monster-lunge .enemy-art, .fast .hero-attack, .fast .hero-cast, .fast .hero-hurt { animation-duration: 0.18s; }
+.fast .monster-dead .enemy-art, .fast .spell-fx, .fast .pop { animation-duration: 0.3s; }
+.fast .player-plate.shake { animation-duration: 0.18s; }
+
 .bar {
   position: relative; height: 18px; border-radius: 9px;
   background: #5b4634; border: 2px solid var(--ink); overflow: hidden;
@@ -136,6 +141,7 @@ button:disabled { cursor: not-allowed; }
 }
 .logo span { color: #ffd66b; }
 .title-menu { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.title-note { font-size: 0.85rem; max-width: 320px; text-align: center; margin: 0; padding: 8px 12px; }
 .name-form { display: grid; gap: 10px; width: min(320px, 90vw); }
 input {
   font: inherit; color: var(--ink); background: #fff; border: 3px solid var(--line);
@@ -223,7 +229,7 @@ input {
 @media (max-aspect-ratio: 1/1) {
   .map-scene { align-items: flex-start; justify-content: flex-start; overflow-x: auto; }
   .map-frame { width: auto; height: calc(100dvh - 170px); flex-shrink: 0; }
-  .map-hint { display: block; position: sticky; left: 0; width: 100%; text-align: center; color: #e8d8ba; margin: 8px 0 0; font-size: 0.85rem; }
+  .map-hint { display: flex; position: sticky; left: 0; width: 100%; justify-content: center; align-items: center; gap: 10px; color: #e8d8ba; margin: 8px 0 0; font-size: 0.85rem; }
 }
 
 /* ---------- 지역 ---------- */
@@ -327,6 +333,8 @@ input {
 .battle-row { display: flex; gap: 10px; align-items: stretch; }
 .player-plate { position: relative; flex: 0 0 240px; display: grid; gap: 4px; align-content: center; padding: 10px 12px; }
 .player-plate.shake { animation: shake 0.4s; }
+.player-plate strong { display: flex; align-items: center; gap: 6px; }
+.fast-toggle { margin-left: auto; min-height: 0; padding: 2px 8px; font-size: 0.8rem; }
 @keyframes shake { 20% { transform: translateX(-8px); } 50% { transform: translateX(7px); } 80% { transform: translateX(-4px); } }
 .actions { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .actions .btn { padding: 10px 4px; }
@@ -463,6 +471,7 @@ input {
 .stats li { display: grid; grid-template-columns: 3em 4.2em 1fr 40px; align-items: center; gap: 6px; }
 .stat-name { font-family: var(--title-font); }
 .stat-val em { color: var(--exp); font-style: normal; font-size: 0.85em; }
+.stat-max { color: var(--accent-dark); }
 .btn-plus { min-height: 40px; height: 40px; width: 40px; padding: 0; font-size: 1.2rem; box-shadow: 0 2px 0 var(--line); }
 .bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; background: #fff8ea; border: 2px solid var(--paper-dark); border-radius: 10px; padding: 4px 8px; }
@@ -476,7 +485,11 @@ input {
 }
 
 /* ---------- 디버그 (?debug) ---------- */
-.debug-fab { position: absolute; z-index: 40; left: 8px; bottom: 8px; background: #2b2118; color: #ffd66b; border-color: #ffd66b; box-shadow: none; opacity: 0.85; }
+/* 왼쪽 가장자리 가운데에 세워 둔다: 아래쪽은 전투 버튼·캐릭터 창 발판과 겹친다. 모달(20)보다는 아래 */
+.debug-fab {
+  position: absolute; z-index: 19; left: 0; top: 40%; writing-mode: vertical-rl; padding: 10px 3px; font-size: 0.75rem; min-height: 0;
+  border-radius: 0 8px 8px 0; background: #2b2118; color: #ffd66b; border-color: #ffd66b; border-left: 0; box-shadow: none; opacity: 0.85;
+}
 .debug-grid { display: grid; gap: 8px; margin-top: 8px; }
 .debug-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .debug-row input { width: 90px; }

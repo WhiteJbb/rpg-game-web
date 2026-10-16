@@ -4,11 +4,13 @@ import { Confirm } from '../common'
 
 interface Props {
   hasSave: boolean
+  /** 저장된 세이브를 읽지 못했다 (따로 보관해 둠) */
+  broken?: boolean
   onContinue: () => void
   onNew: (name: string) => void
 }
 
-export function Title({ hasSave, onContinue, onNew }: Props) {
+export function Title({ hasSave, broken, onContinue, onNew }: Props) {
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
   const [confirming, setConfirming] = useState(false)
@@ -48,6 +50,7 @@ export function Title({ hasSave, onContinue, onNew }: Props) {
             <button className={`btn btn-big ${hasSave ? '' : 'btn-primary'}`} onClick={() => setNaming(true)}>
               새로 시작
             </button>
+            {broken && <p className="panel title-note">저장된 모험을 읽을 수 없어 따로 보관해 두었다. 새 버전에서 고쳐질 수 있다.</p>}
           </>
         )}
       </div>

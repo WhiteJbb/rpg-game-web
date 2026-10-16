@@ -1,5 +1,5 @@
 import { equipById, type Equip, type Potion } from './data/items'
-import type { Player, StatKey } from './types'
+import { STAT_KEYS, type Player, type StatKey } from './types'
 
 export const POINTS_PER_LEVEL = 4
 export const MAX_LEVEL = 999
@@ -45,6 +45,15 @@ export const UPGRADE_BONUS = 0.15 // 강화 1단계당 장비 수치 증가율
 
 /** 강화가 반영된 장비 수치 */
 export const equipStat = (p: Player, e: Equip, stat: StatKey) => Math.round((e[stat] ?? 0) * (1 + UPGRADE_BONUS * (p.upgrades[e.id] ?? 0)))
+
+/** 새 장비가 지금 장비를 대신할 만한가: 지금 장비(강화 포함)가 주는 수치를 하나도 잃지 않고 하나는 더 높아야 한다 */
+export const outclasses = (p: Player, next: Equip, current: Equip) => {
+  const diff = STAT_KEYS.map((k) => equipStat(p, next, k) - equipStat(p, current, k))
+  return diff.every((d, i) => d >= 0 || !current[STAT_KEYS[i]]) && diff.some((d) => d > 0)
+}
+
+/** 장비까지 합친 총합이 이 값에 닿으면 더 올려도 효과가 없는 스텟 (확률 상한). 아래 확률 공식에서 나온 값이다 */
+export const STAT_CAP: Partial<Record<StatKey, number>> = { agi: 45, crit: 37, luck: 50 }
 
 /** 다음 강화 단계의 비용. 보스 장비는 상점가가 없어 고정 기준가를 쓴다. */
 /** 회차 전용 장비는 비싸지만, 강화비는 1회차 최고급 장비 수준으로 묶는다 */

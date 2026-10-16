@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BOSS_CLEAR, ENDING, INTRO, NEW_CYCLE, SECRET_CLEAR } from '../game/data/story'
 import { newGame, reduce } from '../game/engine'
 import { SAVE_KEY, deserialize, serialize } from '../game/save'
@@ -34,33 +34,44 @@ export type Screen =
   | { n: 'story'; bg: string; lines: string[]; next: Screen }
   | { n: 'ending' }
 
-function loadSave(): GameState | null {
+/** 읽지 못한 세이브는 지우지 않고 여기로 옮겨 둔다 (복구용) */
+const BACKUP_KEY = `${KEY}-backup`
+
+function loadSave(): { game: GameState | null; broken: boolean } {
   try {
-    return deserialize(localStorage.getItem(KEY))
+    const raw = localStorage.getItem(KEY)
+    const game = deserialize(raw)
+    if (raw && !game) localStorage.setItem(BACKUP_KEY, raw)
+    return { game, broken: Boolean(raw && !game) }
   } catch {
-    return null // 저장소를 쓸 수 없는 환경 (사생활 보호 모드 등)
+    return { game: null, broken: false } // 저장소를 쓸 수 없는 환경 (사생활 보호 모드 등)
   }
 }
 
 export function App() {
-  const [game, setGame] = useState<GameState | null>(loadSave)
+  const [loaded] = useState(loadSave)
+  const [game, setGame] = useState<GameState | null>(loaded.game)
   const [screen, setScreen] = useState<Screen>({ n: 'title' })
   const [showChar, setShowChar] = useState(false)
   const [showQuests, setShowQuests] = useState(false)
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null)
+  const saveFailed = useRef(false)
 
   useEffect(() => {
     try {
       if (game) localStorage.setItem(KEY, serialize(game))
       else localStorage.removeItem(KEY)
+      saveFailed.current = false
     } catch {
-      /* 저장 실패해도 플레이는 계속 */
+      // 저장 실패해도 플레이는 계속하되, 한 번은 알려 준다
+      if (!saveFailed.current) setToast({ key: Date.now(), text: '저장에 실패했다! 캐릭터 창의 "세이브 옮기기"로 세이브 코드를 복사해 두세요.' })
+      saveFailed.current = true
     }
   }, [game])
 
   useEffect(() => {
     if (!toast) return
-    const id = setTimeout(() => setToast(null), 1800)
+    const id = setTimeout(() => setToast(null), toast.text.length > 30 ? 5000 : 1800)
     return () => clearTimeout(id)
   }, [toast])
 
@@ -104,7 +115,17 @@ export function App() {
   }
 
   const resume = (g: GameState) =>
-    setScreen(g.battle ? { n: 'battle', monsterId: g.battle.monsterId, regionId: g.battle.regionId, seq: 0 } : { n: 'town' })
+    setScreen(
+      g.battle ? { n: 'battle', monsterId: g.battle.monsterId, regionId: g.battle.regionId, seq: 0 } :
+      // 최종 보스를 잡고 엔딩을 보기 전에 끊었다면 엔딩부터
+      g.cleared && !g.endingSeen ? { n: 'story', bg: 'ending', lines: ENDING, next: { n: 'ending' } } :
+      { n: 'town' },
+    )
+
+  const leaveEnding = (next: () => void) => {
+    act({ type: 'ackEnding' })
+    next()
+  }
 
   const afterBattle = (outcome: BattleOutcome, regionId: string, monsterId: string) => {
     if (outcome.type === 'defeat') return setScreen({ n: 'town' })
@@ -122,6 +143,11 @@ export function App() {
     setShowChar(false)
     setScreen({ n: 'story', bg: 'meadow', lines: NEW_CYCLE, next: { n: 'town' } })
   }
+  const toastEl = toast && (
+    <div key={toast.key} className="toast" role="status">
+      {toast.text}
+    </div>
+  )
 
   const debug = DEBUG && (
     <Debug
@@ -149,12 +175,14 @@ export function App() {
         <MuteButton className="mute-float" />
         <Title
           hasSave={game !== null}
+          broken={loaded.broken && game === null}
           onContinue={() => resume(game!)}
           onNew={(name) => {
             setGame(newGame(name))
             setScreen({ n: 'story', bg: 'meadow', lines: INTRO, next: { n: 'town' } })
           }}
         />
+        {toastEl}
       </div>
     )
   }
@@ -170,7 +198,7 @@ export function App() {
       )
       break
     case 'ending':
-      body = <Ending game={game} onContinue={() => setScreen({ n: 'town' })} onNewCycle={startNewCycle} />
+      body = <Ending game={game} onContinue={() => leaveEnding(() => setScreen({ n: 'town' }))} onNewCycle={() => leaveEnding(startNewCycle)} />
       break
     case 'town':
       body = <Town onEnter={(place) => setScreen(place === 'gate' ? { n: 'map' } : { n: 'place', place })} />
@@ -237,11 +265,7 @@ export function App() {
         />
       )}
       {showQuests && <Quests game={game} act={act} onClose={() => setShowQuests(false)} />}
-      {toast && (
-        <div key={toast.key} className="toast" role="status">
-          {toast.text}
-        </div>
-      )}
+      {toastEl}
     </div>
   )
 }

@@ -35,7 +35,9 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
   const [resetting, setResetting] = useState(false)
   const [step, setStep] = useState<(typeof STEPS)[number]>(1)
   const [asking, setAsking] = useState<null | 'respec' | 'cycle' | 'save'>(null)
-  const amount = step === 'all' ? p.points : Math.min(step, p.points)
+  // 확률 상한에 닿은 스텟은 더 못 올린다 (포인트만 버리게 된다). '전부'도 상한까지만
+  const room = (k: StatKey) => (R.STAT_CAP[k] === undefined ? Infinity : Math.max(0, R.STAT_CAP[k]! - R.totalStat(p, k)))
+  const amount = (k: StatKey) => Math.min(step === 'all' ? p.points : step, p.points, room(k))
   const spent = Object.values(p.stats).reduce((a, b) => a + b, 0) - 20
   if (resetting) return <Confirm text="정말 모든 진행을 지우고 처음으로 돌아갈까요?" yes="전부 지운다" onYes={onReset} onNo={() => setResetting(false)} />
   return (
@@ -99,8 +101,17 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                   {p.stats[st.key]}
                   {R.totalStat(p, st.key) !== p.stats[st.key] && <em> +{R.totalStat(p, st.key) - p.stats[st.key]}</em>}
                 </span>
-                <small>{st.effect(game)}</small>
-                <button className="btn btn-plus" disabled={p.points < 1} aria-label={`${st.name} 올리기`} onClick={() => act({ type: 'allocate', stat: st.key, amount })}>
+                <small>
+                  {st.effect(game)}
+                  {room(st.key) === 0 && <b className="stat-max"> · 최대</b>}
+                </small>
+                <button
+                  className="btn btn-plus"
+                  disabled={amount(st.key) < 1}
+                  title={room(st.key) === 0 ? '더 올려도 효과가 없다' : undefined}
+                  aria-label={`${st.name} 올리기`}
+                  onClick={() => act({ type: 'allocate', stat: st.key, amount: amount(st.key) })}
+                >
                   +
                 </button>
               </li>

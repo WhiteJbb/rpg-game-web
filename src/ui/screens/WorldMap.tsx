@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { monsterById } from '../../game/data/monsters'
 import { REGIONS, regionById } from '../../game/data/regions'
 import { isRegionOpen } from '../../game/engine'
@@ -21,9 +22,16 @@ interface Props {
 
 export function WorldMap({ game, onRegion, onTown }: Props) {
   const url = artUrl('backgrounds', 'world-map')
+  const frame = useRef<HTMLDivElement>(null)
+  // 세로 화면에서는 지도가 가로로 넘친다. 가장 멀리 열린 지역이 보이게 밀어 둔다 (넘치지 않으면 아무 일도 없다)
+  useEffect(() => {
+    const last = REGIONS.filter((r) => isRegionOpen(game, r.id)).at(-1)!
+    const el = frame.current
+    if (el) el.parentElement!.scrollLeft = (SPOTS[last.id].x / 100) * el.offsetWidth - el.parentElement!.clientWidth / 2
+  }, [game])
   return (
     <div className="scene map-scene">
-      <div className="map-frame" style={url ? { backgroundImage: `url(${url})` } : undefined}>
+      <div ref={frame} className="map-frame" style={url ? { backgroundImage: `url(${url})` } : undefined}>
         {REGIONS.map((r) => {
           const open = isRegionOpen(game, r.id)
           const done = game.progress[r.id].bossDefeated
@@ -48,7 +56,12 @@ export function WorldMap({ game, onRegion, onTown }: Props) {
           <span className="sign">마을로</span>
         </button>
       </div>
-      <p className="map-hint">← 좌우로 밀어서 둘러보기 →</p>
+      <div className="map-hint">
+        <span>← 좌우로 밀어서 둘러보기 →</span>
+        <button className="btn btn-small" onClick={onTown}>
+          🏠 마을로
+        </button>
+      </div>
     </div>
   )
 }

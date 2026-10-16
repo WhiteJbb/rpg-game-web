@@ -29,6 +29,17 @@ const STATUS_NAME: Record<StatusKind, string> = { burn: '화상', chill: '빙결
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+// 빠른 전투: 연출 대기를 1/3로. 회차 반복에서 한 전투가 길어지는 것을 줄인다
+const FAST_KEY = 'planet-earth-fast'
+const FAST_DIV = 3
+const loadFast = () => {
+  try {
+    return localStorage.getItem(FAST_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   const m = monsterById(monsterId, game.cycle)
   const p = game.player
@@ -47,6 +58,18 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   const [result, setResult] = useState<Extract<GameEvent, { t: 'victory' | 'defeat' }> | null>(null)
   const alive = useRef(true)
   const fxKey = useRef(0)
+  const [fast, setFast] = useState(loadFast)
+  const fastRef = useRef(fast)
+  const toggleFast = () => {
+    fastRef.current = !fast
+    setFast(!fast)
+    try {
+      localStorage.setItem(FAST_KEY, fast ? '0' : '1')
+    } catch {
+      /* 저장 안 되면 이번 전투만 */
+    }
+  }
+  const wait = (ms: number) => sleep(fastRef.current ? ms / FAST_DIV : ms)
   useEffect(() => {
     alive.current = true
     return () => void (alive.current = false)
@@ -63,30 +86,30 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, e.crit ? 'crit' : 'dmg')
         setShown((s) => ({ ...s, mhp: e.monsterHp }))
-        return sleep(650)
+        return wait(650)
       case 'playerSpell':
         setCaption(`${spellById(e.spellId).name}!`)
         setAnim('spell')
         setHeroAnim('hero-cast')
         setSpellFx({ key: ++fxKey.current, id: e.spellId })
         sfx('spell')
-        await sleep(350)
+        await wait(350)
         sfx('hit')
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, 'crit')
         setShown((s) => ({ ...s, mhp: e.monsterHp, pmp: e.mp }))
-        return sleep(650)
+        return wait(650)
       case 'playerDefend':
         sfx('defend')
         setCaption('몸을 웅크리고 방어 태세를 취했다.')
         setShown((s) => ({ ...s, pmp: s.pmp + e.mp }))
-        return sleep(450)
+        return wait(450)
       case 'potion':
         setCaption(`${josa(potionById(e.potionId).name, '을', '를')} 마셨다.`)
         sfx('heal')
         pop('player', e.hp > 0 ? `+${e.hp}` : `+${e.mp} MP`, 'heal')
         setShown((s) => ({ ...s, php: s.php + e.hp, pmp: s.pmp + e.mp }))
-        return sleep(600)
+        return wait(600)
       case 'status':
         sfx(e.target === 'player' ? 'error' : 'spell')
         setCaption(
@@ -96,7 +119,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
               ? '머리가 핑 돈다... 한 턴을 놓쳤다!'
               : '독이 온몸에 퍼진다!',
         )
-        return sleep(700)
+        return wait(700)
       case 'skill': {
         const skill = jobById(e.job).skill
         setCaption(`${skill.name}!`)
@@ -105,13 +128,13 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
           sfx('heal')
           setHeroAnim('hero-cast')
           pop('player', '집중!', 'heal')
-          return sleep(600)
+          return wait(600)
         }
         sfx('crit')
         setHeroAnim('hero-attack')
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, 'crit')
-        return sleep(700)
+        return wait(700)
       }
       case 'venomTick':
         sfx('hit')
@@ -119,52 +142,52 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, 'dmg')
         setShown((s) => ({ ...s, mhp: e.monsterHp }))
-        return sleep(600)
+        return wait(600)
       case 'burnTick':
         sfx('hit')
         setCaption(`${josa(m.name, '이', '가')} 불길에 휩싸여 있다!`)
         setAnim('monster-hit')
         pop('monster', `${e.dmg}`, 'dmg')
         setShown((s) => ({ ...s, mhp: e.monsterHp }))
-        return sleep(600)
+        return wait(600)
       case 'poisonTick':
         sfx('hurt')
         setCaption('독 때문에 몸이 욱신거린다.')
         pop('player', `${e.dmg}`, 'dmg')
         setShown((s) => ({ ...s, php: e.playerHp }))
-        return sleep(600)
+        return wait(600)
       case 'monsterStunned':
         setCaption(`${josa(m.name, '은', '는')} 기절해서 움직이지 못한다!`)
-        return sleep(700)
+        return wait(700)
       case 'fleeFail':
         sfx('error')
         setCaption('도망치지 못했다!')
-        return sleep(600)
+        return wait(600)
       case 'monsterCharge':
         sfx('charge')
         setCharging(e.skill)
         setCaption(`${josa(m.name, '이', '가')} 힘을 모으고 있다... (${e.skill})`)
-        return sleep(800)
+        return wait(800)
       case 'monsterAttack':
         setCharging(null)
         setCaption(e.skill ? `${m.name}의 ${e.skill}!` : `${m.name}의 공격!`)
         setAnim('monster-lunge')
-        await sleep(250)
+        await wait(250)
         sfx(e.dodged ? 'dodge' : 'hurt')
         if (!e.dodged) setHeroAnim('hero-hurt')
         pop('player', e.dodged ? '회피!' : `${e.dmg}`, e.dodged ? 'miss' : 'dmg')
         setShown((s) => ({ ...s, php: e.playerHp, mhp: e.monsterHp }))
-        return sleep(600)
+        return wait(600)
       case 'victory':
         setAnim('monster-dead')
         setCaption(`${josa(m.name, '을', '를')} 쓰러뜨렸다!`)
-        await sleep(700)
+        await wait(700)
         sfx(e.levelUps > 0 ? 'levelup' : 'victory')
         return setResult(e)
       case 'defeat':
         sfx('defeat')
         setCaption('눈앞이 캄캄해진다...')
-        await sleep(700)
+        await wait(700)
         return setResult(e)
     }
   }
@@ -189,7 +212,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
   const skill = p.job ? jobById(p.job).skill : null
   const b = game.battle
   return (
-    <Scene bg={artUrl('backgrounds', monsterId) ? monsterId : regionId} className={`battle-scene ${anim === 'spell' ? 'flash' : ''}`}>
+    <Scene bg={artUrl('backgrounds', monsterId) ? monsterId : regionId} className={`battle-scene ${anim === 'spell' ? 'flash' : ''} ${fast ? 'fast' : ''}`}>
       <div className="enemy">
         <div className="enemy-plate panel">
           <strong>
@@ -227,6 +250,9 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
               {p.name} <span className="lv">Lv.{p.level}</span>
               {!locked && b && b.poison > 0 && <span className="status status-poison">중독 {b.poison}</span>}
               {!locked && b?.focus && <span className="status status-chill">집중</span>}
+              <button className="btn btn-small fast-toggle" aria-pressed={fast} title="전투 연출 속도" onClick={toggleFast}>
+                {fast ? '⏩ 빠름' : '▶ 보통'}
+              </button>
             </strong>
             {/* 결과가 나온 뒤에는 실제 값(레벨업 회복 포함)을 보여준다 */}
             <Bar kind="hp" label="HP" value={result?.t === 'victory' ? p.hp : shown.php} max={R.maxHp(p)} />
