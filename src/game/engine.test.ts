@@ -27,6 +27,23 @@ describe('rules', () => {
     expect(R.fleeChance(p)).toBeLessThanOrEqual(0.9)
   })
 
+  it('STAT_CAP은 확률 공식의 실제 상한과 맞는다', () => {
+    const at = (k: 'agi' | 'crit' | 'luck', v: number) => {
+      const p = newGame('t').player
+      p.stats[k] = v
+      return k === 'agi' ? R.dodgeChance(p) + R.fleeChance(p) : k === 'crit' ? R.critChance(p) : R.goldBonus(p) + R.dropBonus(p) + R.slotRefundChance(p)
+    }
+    for (const k of ['agi', 'crit', 'luck'] as const) {
+      const cap = R.STAT_CAP[k]!
+      expect(at(k, cap)).toBeGreaterThan(at(k, cap - 1))
+      expect(at(k, cap + 50)).toBe(at(k, cap))
+    }
+    const rogue = newGame('t').player
+    rogue.job = 'rogue'
+    rogue.stats.agi = R.STAT_CAP.agi!
+    expect(R.dodgeChance({ ...rogue, stats: { ...rogue.stats, agi: 99 } })).toBe(R.dodgeChance(rogue))
+  })
+
   it('슬롯머신 기대값은 운이 최대여도 1 미만', () => {
     let ev = 0
     const n = R.SLOT_SYMBOLS
@@ -148,6 +165,46 @@ describe('engine', () => {
     stale.battle = { monsterId: 'removed-monster', regionId: 'meadow', isBoss: false, monsterHp: 5, charging: null }
     expect(deserialize(JSON.stringify(stale))?.battle).toBeNull()
     expect(deserialize(null)).toBeNull()
+    // 스텟이 하나 빠진 세이브는 MP가 NaN이 되므로 거절한다
+    const noInt = JSON.parse(serialize(s))
+    delete noInt.player.stats.int
+    expect(deserialize(JSON.stringify(noInt))).toBeNull()
+  })
+
+  it('엔딩 플래그: 최종 보스 처치 → 엔딩을 봐야 켜지고, 옛 세이브는 클리어했으면 본 것으로 친다', () => {
+    let s = newGame('t')
+    for (const r of REGIONS) s.progress[r.id] = { kills: 99, bossDefeated: r.id !== 'vampire-castle' }
+    s = reduce(s, { type: 'challengeBoss', regionId: 'vampire-castle' }, seeded(1))
+    s.battle!.monsterHp = 1
+    s = reduce(s, { type: 'attack' }, seeded(1))
+    expect(s.cleared).toBe(true)
+    expect(s.endingSeen).toBe(false)
+    s = reduce(s, { type: 'ackEnding' }, seeded(1))
+    expect(s.endingSeen).toBe(true)
+    s = reduce(s, { type: 'newCycle' }, seeded(1))
+    expect(s.endingSeen).toBe(false)
+    const old = JSON.parse(serialize(s))
+    delete old.endingSeen
+    old.cleared = true
+    expect(deserialize(JSON.stringify(old))?.endingSeen).toBe(true)
+  })
+
+  it('얻은 장비는 지금 장비(강화 포함)보다 확실히 좋을 때만 자동 착용', () => {
+    const s = newGame('t')
+    s.player.gold = 99999
+    let n = reduce(s, { type: 'buyEquip', equipId: 'bronze-sword' }, seeded(1))
+    expect(n.player.weapon).toBe('bronze-sword')
+    // 청동검 +10 (힘 20) 을 끼고 강철검(힘 16)을 사면 그대로 청동검
+    n.player.upgrades['bronze-sword'] = 10
+    n = reduce(n, { type: 'buyEquip', equipId: 'steel-sword' }, seeded(1))
+    expect(n.player.weapon).toBe('bronze-sword')
+    n = reduce(n, { type: 'buyEquip', equipId: 'mithril-sword' }, seeded(1))
+    expect(n.player.weapon).toBe('mithril-sword')
+    // 지력 지팡이를 쓰는 중에 힘만 높은 검을 얻어도 바꾸지 않는다
+    n = reduce(n, { type: 'buyEquip', equipId: 'archmage-staff' }, seeded(1))
+    n = reduce(n, { type: 'equip', equipId: 'archmage-staff' }, seeded(1))
+    n = reduce(n, { type: 'buyEquip', equipId: 'battle-axe' }, seeded(1))
+    expect(n.player.weapon).toBe('archmage-staff')
   })
 
   it('마법마다 고유 효과가 있다: 화상은 매 턴 피해, 기절은 턴을 건너뛴다', () => {

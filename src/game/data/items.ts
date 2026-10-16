@@ -111,7 +111,6 @@ export const SLOTS = [
   { id: 'accessory', name: '장신구' },
 ] as const
 
-export const equipWorth = (e: Equip) => e.str + e.def + e.int + (e.agi ?? 0) + (e.crit ?? 0) + (e.luck ?? 0)
 
 const find = <T extends { id: string }>(list: T[], id: string, kind: string): T => {
   const x = list.find((x) => x.id === id)

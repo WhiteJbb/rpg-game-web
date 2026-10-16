@@ -1,9 +1,10 @@
+import { POTIONS } from './data/items'
 import { MONSTERS } from './data/monsters'
 import { QUESTS } from './data/quests'
 import { REGIONS, regionById } from './data/regions'
 import { newBattle } from './engine'
 import { maxHp, maxMp } from './rules'
-import type { GameState } from './types'
+import { STAT_KEYS, type GameState } from './types'
 
 export const SAVE_KEY = 'planet-earth-save'
 const VERSION = 1
@@ -19,7 +20,7 @@ export function deserialize(raw: string | null): GameState | null {
     const s = JSON.parse(raw) as GameState
     const p = s?.player
     if (s.version !== VERSION || typeof p?.name !== 'string') return null
-    if (![p.level, p.exp, p.hp, p.mp, p.gold, p.points, ...Object.values(p.stats), ...Object.values(p.potions)].every(isNum)) return null
+    if (![p.level, p.exp, p.hp, p.mp, p.gold, p.points, ...STAT_KEYS.map((k) => p.stats?.[k]), ...POTIONS.map((po) => p.potions?.[po.id])].every(isNum)) return null
     if (!Array.isArray(p.spells) || !Array.isArray(p.owned)) return null
     if (!REGIONS.every((r) => isNum(s.progress?.[r.id]?.kills))) return null
     if (typeof p.upgrades !== 'object' || p.upgrades === null) p.upgrades = {}
@@ -44,7 +45,9 @@ export function deserialize(raw: string | null): GameState | null {
       }),
     )
     const record = { wins: isNum(s.record?.wins) ? s.record.wins : 0, defeats: isNum(s.record?.defeats) ? s.record.defeats : 0 }
-    return { ...s, cycle, battle, pending: null, quests, record, events: [], cleared: Boolean(s.cleared) }
+    // 엔딩 플래그가 생기기 전의 세이브: 이미 클리어했다면 엔딩은 본 것으로 친다
+    const cleared = Boolean(s.cleared)
+    return { ...s, cycle, battle, pending: null, quests, record, events: [], cleared, endingSeen: typeof s.endingSeen === 'boolean' ? s.endingSeen : cleared }
   } catch {
     return null
   }

@@ -1,5 +1,5 @@
 import { EVENTS, eventById, type Choice } from './data/events'
-import { EQUIPS, equipById, equipWorth, potionById, spellById } from './data/items'
+import { EQUIPS, equipById, potionById, spellById } from './data/items'
 import { canTakeJob, jobById } from './data/jobs'
 import { monsterById, type Monster, type Special } from './data/monsters'
 import { QUESTS, questById, questTarget } from './data/quests'
@@ -44,6 +44,7 @@ export function newGame(name: string): GameState {
     record: { wins: 0, defeats: 0 },
     events: [],
     cleared: false,
+    endingSeen: false,
   }
 }
 
@@ -268,9 +269,15 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       s.progress = freshProgress()
       s.quests = freshQuests()
       s.cleared = false
+      s.endingSeen = false
       p.hp = R.maxHp(p)
       p.mp = R.maxMp(p)
       emit({ t: 'newCycle', cycle: s.cycle })
+      return s
+    }
+
+    case 'ackEnding': {
+      s.endingSeen = true
       return s
     }
 
@@ -416,12 +423,12 @@ function clampVitals(p: Player) {
   p.mp = Math.min(p.mp, R.maxMp(p))
 }
 
-/** 장비를 얻는다. 지금 장비보다 좋을 때만 자동 착용. */
+/** 장비를 얻는다. 지금 장비(강화 포함)보다 확실히 좋을 때만 자동 착용. */
 function obtainEquip(p: Player, id: string) {
   const eq = equipById(id)
   p.owned.push(id)
   const current = p[eq.slot]
-  if (!current || equipWorth(eq) > equipWorth(equipById(current))) p[eq.slot] = id
+  if (!current || R.outclasses(p, eq, equipById(current))) p[eq.slot] = id
   clampVitals(p)
 }
 

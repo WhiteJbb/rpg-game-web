@@ -1,4 +1,5 @@
 export type StatKey = 'str' | 'agi' | 'def' | 'int' | 'crit' | 'luck'
+export const STAT_KEYS: StatKey[] = ['str', 'agi', 'def', 'int', 'crit', 'luck']
 export type PotionId = 'hp-s' | 'hp-m' | 'hp-l' | 'mp'
 export type Rng = () => number
 
@@ -116,6 +117,8 @@ export interface GameState {
   record: { wins: number; defeats: number }
   events: GameEvent[]
   cleared: boolean
+  /** 엔딩 화면을 봤는가 (최종 보스 처치 직후 새로고침해도 엔딩을 놓치지 않게) */
+  endingSeen: boolean
 }
 
 export type Action =
@@ -140,3 +143,4 @@ export type Action =
   | { type: 'changeJob'; job: 'warrior' | 'mage' | 'rogue' }
   | { type: 'upgradeEquip'; equipId: string }
   | { type: 'newCycle' }
+  | { type: 'ackEnding' }
