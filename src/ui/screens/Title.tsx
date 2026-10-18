@@ -1,16 +1,19 @@
 import { useState } from 'react'
+import { jobById } from '../../game/data/jobs'
+import type { GameState } from '../../game/types'
 import { Scene } from '../art'
 import { Confirm } from '../common'
 
 interface Props {
-  hasSave: boolean
+  save: GameState | null
   /** 저장된 세이브를 읽지 못했다 (따로 보관해 둠) */
   broken?: boolean
   onContinue: () => void
   onNew: (name: string) => void
 }
 
-export function Title({ hasSave, broken, onContinue, onNew }: Props) {
+export function Title({ save, broken, onContinue, onNew }: Props) {
+  const hasSave = save !== null
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
   const [confirming, setConfirming] = useState(false)
@@ -42,11 +45,18 @@ export function Title({ hasSave, broken, onContinue, onNew }: Props) {
           </form>
         ) : (
           <>
-            {hasSave && (
+            {save && (
               <button className="btn btn-primary btn-big" onClick={onContinue}>
                 이어하기
+                <small className="title-save">
+                  {save.player.name} · Lv.{save.player.level}
+                  {save.player.job && ` · ${jobById(save.player.job).name}`}
+                  {save.cycle > 0 && ` · ${save.cycle + 1}회차`}
+                  {save.battle && ' · 전투 중'}
+                </small>
               </button>
             )}
+
             <button className={`btn btn-big ${hasSave ? '' : 'btn-primary'}`} onClick={() => setNaming(true)}>
               새로 시작
             </button>

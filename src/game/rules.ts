@@ -58,6 +58,13 @@ export const outclasses = (p: Player, next: Equip, current: Equip) => {
 /** 장비까지 합친 총합이 이 값에 닿으면 더 올려도 효과가 없는 스텟 (확률 상한). 아래 확률 공식에서 나온 값이다 */
 export const STAT_CAP: Partial<Record<StatKey, number>> = { agi: 45, crit: 37, luck: 50 }
 
+/** 지금 마시면 실제로 회복되는 것이 있는가 (가득 찼으면 false) */
+export const potionUseful = (p: Player, po: Potion) => {
+  const h = potionHeal(p, po)
+  return Math.min(maxHp(p) - p.hp, h.hp) + Math.min(maxMp(p) - p.mp, h.mp) > 0
+}
+
+
 /** 다음 강화 단계의 비용. 보스 장비는 상점가가 없어 고정 기준가를 쓴다. */
 /** 회차 전용 장비는 비싸지만, 강화비는 1회차 최고급 장비 수준으로 묶는다 */
 const UPGRADE_PRICE_CAP = 4000

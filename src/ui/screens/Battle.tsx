@@ -16,6 +16,8 @@ interface Props {
   regionId: string
   act: (a: Action) => GameState
   onExit: (outcome: BattleOutcome) => void
+  /** 저장된 전투를 이어서 (등장 대사를 다시 하지 않는다) */
+  resumed?: boolean
 }
 
 interface Fx {
@@ -40,18 +42,22 @@ const loadFast = () => {
   }
 }
 
-export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
+export function Battle({ game, monsterId, regionId, act, onExit, resumed }: Props) {
+
   const m = monsterById(monsterId, game.cycle)
   const p = game.player
   // 화면에 보이는 수치. 이벤트를 하나씩 연출하면서 따라간다.
   const [shown, setShown] = useState({ php: p.hp, pmp: p.mp, mhp: game.battle?.monsterHp ?? m.hp })
   const [busy, setBusy] = useState(false)
-  const [fx, setFx] = useState<Fx | null>(null)
+  // 피해 숫자는 대상별로 따로 띄운다 (한 칸이면 반격 숫자가 뜨는 순간 내 공격 숫자가 사라진다)
+  const [fx, setFx] = useState<Partial<Record<Fx['target'], Fx>>>({})
   const [anim, setAnim] = useState<'' | 'monster-hit' | 'monster-lunge' | 'monster-dead' | 'spell'>('')
   const [heroAnim, setHeroAnim] = useState<'' | 'hero-attack' | 'hero-cast' | 'hero-hurt'>('')
   const [spellFx, setSpellFx] = useState<{ key: number; id: string } | null>(null)
   const [caption, setCaption] = useState(
-    game.battle?.charging ? `${josa(m.name, '이', '가')} 힘을 모으고 있다... (${game.battle.charging})` : `${josa(m.name, '이', '가')} 나타났다!`,
+    game.battle?.charging ? `${josa(m.name, '이', '가')} 힘을 모으고 있다... (${game.battle.charging})` :
+    resumed ? `${josa(m.name, '과', '와')} 싸우는 중이다.` :
+    `${josa(m.name, '이', '가')} 나타났다!`,
   )
   const [charging, setCharging] = useState(game.battle?.charging ?? null)
   const [menu, setMenu] = useState<null | 'spell' | 'potion'>(null)
@@ -75,7 +81,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
     return () => void (alive.current = false)
   }, [])
 
-  const pop = (target: Fx['target'], text: string, kind: Fx['kind']) => setFx({ key: ++fxKey.current, target, text, kind })
+  const pop = (target: Fx['target'], text: string, kind: Fx['kind']) => setFx((prev) => ({ ...prev, [target]: { key: ++fxKey.current, target, text, kind } }))
 
   async function play(e: GameEvent) {
     switch (e.t) {
@@ -231,9 +237,9 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
         <div className={`enemy-body ${anim} ${charging ? 'charging' : ''}`}>
           <Art kind="monsters" id={m.id} alt={m.name} className="enemy-art" fallback="👾" />
           {spellFx && <Art key={spellFx.key} kind="items" id={spellFx.id} alt="" className={`spell-fx spell-fx-${spellFx.id}`} fallback="✨" />}
-          {fx?.target === 'monster' && (
-            <span key={fx.key} className={`pop pop-${fx.kind}`}>
-              {fx.text}
+          {fx.monster && (
+            <span key={fx.monster.key} className={`pop pop-${fx.monster.kind}`}>
+              {fx.monster.text}
             </span>
           )}
         </div>
@@ -245,7 +251,7 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
           {caption}
         </p>
         <div className="battle-row">
-          <div className={`panel player-plate ${fx?.target === 'player' && fx.kind === 'dmg' ? 'shake' : ''}`} key={fx?.target === 'player' ? fx.key : 0}>
+          <div className={`panel player-plate ${fx.player?.kind === 'dmg' ? 'shake' : ''}`} key={fx.player?.key ?? 0}>
             <strong>
               {p.name} <span className="lv">Lv.{p.level}</span>
               {!locked && b && b.poison > 0 && <span className="status status-poison">중독 {b.poison}</span>}
@@ -257,9 +263,9 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
             {/* 결과가 나온 뒤에는 실제 값(레벨업 회복 포함)을 보여준다 */}
             <Bar kind="hp" label="HP" value={result?.t === 'victory' ? p.hp : shown.php} max={R.maxHp(p)} />
             <Bar kind="mp" label="MP" value={result?.t === 'victory' ? p.mp : shown.pmp} max={R.maxMp(p)} />
-            {fx?.target === 'player' && (
-              <span key={fx.key} className={`pop pop-${fx.kind}`}>
-                {fx.text}
+            {fx.player && (
+              <span key={fx.player.key} className={`pop pop-${fx.player.kind}`}>
+                {fx.player.text}
               </span>
             )}
           </div>
@@ -316,13 +322,14 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
           {menu === 'potion' && (
             <div className="actions actions-list">
               {POTIONS.filter((po) => !po.cycle || p.potions[po.id] > 0).map((po) => (
-                <button key={po.id} className="btn btn-item" disabled={locked || p.potions[po.id] < 1} onClick={() => run({ type: 'usePotion', potionId: po.id })}>
+                <button key={po.id} className="btn btn-item" disabled={locked || p.potions[po.id] < 1 || !R.potionUseful(p, po)} onClick={() => run({ type: 'usePotion', potionId: po.id })}>
                   <Art kind="items" id={po.id} alt="" className="icon" fallback="🧪" />
                   <span className="item-text">
                     {po.name}
                     <small>
-                      {potionDesc(p, po)} · {p.potions[po.id]}개
+                      {potionDesc(p, po)} · {p.potions[po.id]}개{p.potions[po.id] > 0 && !R.potionUseful(p, po) && ' · 가득'}
                     </small>
+
                   </span>
                 </button>
               ))}
@@ -367,7 +374,8 @@ export function Battle({ game, monsterId, regionId, act, onExit }: Props) {
           <p>정신을 차려 보니 마을 여관이었다.</p>
           {result.goldLost > 0 && (
             <p className="reward-line">
-              치료비로 <Gold amount={result.goldLost} /> 를 잃었다.
+              치료비로 <Gold amount={result.goldLost} />를 잃었다.
+
             </p>
           )}
           <button className="btn btn-primary" autoFocus onClick={() => onExit({ type: 'defeat' })}>

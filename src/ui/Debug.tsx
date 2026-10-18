@@ -132,9 +132,10 @@ export function Debug({ game, screen, patch, goto, onReset }: Props) {
                   </button>
                 ))}
               </div>
-              <button className="btn btn-small" onClick={() => patch((g) => REGIONS.forEach((r) => void (g.progress[r.id] = { ...g.progress[r.id], kills: r.killsForBoss, bossDefeated: true })))}>
-                모든 지역 개방 (보스 처치 처리)
+              <button className="btn btn-small" onClick={() => patch((g) => REGIONS.forEach((r, i) => void (g.progress[r.id] = { ...g.progress[r.id], kills: r.killsForBoss, bossDefeated: i < REGIONS.length - 1 })))}>
+                모든 지역 개방 (마지막 보스만 남김 → 엔딩 가능)
               </button>
+
               <button className="btn btn-small" onClick={() => patch((g) => REGIONS.forEach((r) => void (g.progress[r.id].kills = r.killsForBoss)))}>보스 도전 조건 채우기</button>
               <button className="btn btn-small" onClick={() => patch((g) => void (g.cleared = !g.cleared))}>엔딩 본 상태: {game?.cleared ? '예' : '아니오'}</button>
               <div className="debug-row">

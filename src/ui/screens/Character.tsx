@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { EQUIPS, POTIONS, SLOTS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
-import { JOBS, JOB_LEVEL, JOB_NEED, canTakeJob, jobById } from '../../game/data/jobs'
+import { JOBS, JOB_LEVEL, JOB_NEED, canTakeJob, jobById, type JobId } from '../../game/data/jobs'
+
 import { unclaimedQuests } from '../../game/engine'
 import { Art, heroArt } from '../art'
 import { Bar, Confirm, Gold, Modal, SLOT_ICON, equipBonus, equipName, potionDesc } from '../common'
@@ -37,7 +38,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
   const owned = EQUIPS.filter((e) => p.owned.includes(e.id))
   const [resetting, setResetting] = useState(false)
   const [step, setStep] = useState<(typeof STEPS)[number]>(1)
-  const [asking, setAsking] = useState<null | 'respec' | 'cycle' | 'save' | { stat: StatKey; amount: number }>(null)
+  const [asking, setAsking] = useState<null | 'respec' | 'cycle' | 'save' | { stat: StatKey; amount: number } | { job: JobId }>(null)
   // 확률 상한에 닿은 스텟은 더 못 올린다 (포인트만 버리게 된다). '전부'도 상한까지만.
   // 기본 스텟 기준이다 — 장비 포함으로 재면 장비 때문에 전직 조건(기본 스텟)을 못 채우는 막다른 길이 생긴다
   const room = (k: StatKey) => (R.STAT_CAP[k] === undefined ? Infinity : Math.max(0, R.STAT_CAP[k]! - p.stats[k]))
@@ -64,7 +65,15 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
         />
       )}
       {asking === 'save' && <SaveManager game={game} onImport={onImport} onClose={() => setAsking(null)} />}
-      {asking !== null && typeof asking === 'object' && (
+      {asking !== null && typeof asking === 'object' && 'job' in asking && (
+        <Confirm
+          text={`${jobById(asking.job).name}(으)로 전직할까요?${R.jobChangeCost(p) > 0 ? ` ${R.jobChangeCost(p).toLocaleString()} 골드가 듭니다.` : ' 나중에 다른 직업으로 바꾸려면 골드가 듭니다.'}`}
+          yes="전직"
+          onYes={() => (act({ type: 'changeJob', job: asking.job }), setAsking(null))}
+          onNo={() => setAsking(null)}
+        />
+      )}
+      {asking !== null && typeof asking === 'object' && 'stat' in asking && (
         <Confirm
           text={`${STATS.find((st) => st.key === asking.stat)!.name}에 ${asking.amount}포인트를 한 번에 넣을까요? 되돌리려면 ${R.respecCost(p).toLocaleString()} 골드가 듭니다.`}
           yes="넣는다"
@@ -152,7 +161,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                   {current ? (
                     <span className="owned">현재 직업</span>
                   ) : (
-                    <button className="btn btn-buy" disabled={!ok || p.gold < R.jobChangeCost(p)} onClick={() => act({ type: 'changeJob', job: job.id })}>
+                    <button className="btn btn-buy" disabled={!ok || p.gold < R.jobChangeCost(p)} onClick={() => setAsking({ job: job.id })}>
                       전직 {R.jobChangeCost(p) > 0 && <Gold amount={R.jobChangeCost(p)} />}
                     </button>
                   )}
@@ -164,8 +173,8 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
           <h3>포션</h3>
           <div className="bag">
             {POTIONS.filter((po) => !po.cycle || p.potions[po.id] > 0).map((po) => {
-              const heal = R.potionHeal(p, po)
-              const useless = Math.min(R.maxHp(p) - p.hp, heal.hp) + Math.min(R.maxMp(p) - p.mp, heal.mp) <= 0
+              const useless = !R.potionUseful(p, po)
+
               return (
               <button key={po.id} className="btn btn-item" disabled={p.potions[po.id] < 1 || useless} onClick={() => act({ type: 'usePotion', potionId: po.id })} title={useless ? '지금은 마실 필요가 없다' : '마시기'}>
                 <Art kind="items" id={po.id} alt="" className="icon" fallback="🧪" />

@@ -116,7 +116,8 @@ button:disabled { cursor: not-allowed; }
 
 /* 빠른 전투에서는 CSS 연출도 같은 비율로 줄인다 */
 .fast .monster-hit .enemy-art, .fast .monster-lunge .enemy-art, .fast .hero-attack, .fast .hero-cast, .fast .hero-hurt { animation-duration: 0.18s; }
-.fast .monster-dead .enemy-art, .fast .spell-fx, .fast .pop { animation-duration: 0.3s; }
+.fast .monster-dead .enemy-art, .fast .spell-fx { animation-duration: 0.3s; }
+.fast .pop { animation-duration: 0.55s; } /* 숫자는 읽을 시간을 남긴다 */
 .fast .player-plate.shake { animation-duration: 0.18s; }
 
 .bar {
@@ -142,6 +143,8 @@ button:disabled { cursor: not-allowed; }
 .logo span { color: #ffd66b; }
 .title-menu { display: flex; flex-direction: column; gap: 14px; align-items: center; }
 .title-note { font-size: 0.85rem; max-width: 320px; text-align: center; margin: 0; padding: 8px 12px; }
+.title-save { display: block; font-size: 0.8rem; font-weight: normal; opacity: 0.85; margin-top: 2px; }
+
 .name-form { display: grid; gap: 10px; width: min(320px, 90vw); }
 input {
   font: inherit; color: var(--ink); background: #fff; border: 3px solid var(--line);
@@ -287,7 +290,7 @@ input {
 @keyframes hero-cast { 40% { transform: translateY(-6%); filter: drop-shadow(0 0 16px #fff3a8) brightness(1.3); } }
 .hero-hurt { animation: hero-hurt 0.45s; }
 @keyframes hero-hurt { 20% { transform: translateX(-10px); filter: brightness(2) saturate(0.4); } 55% { transform: translateX(6px); } }
-@media (max-width: 720px) { .hero { height: 40%; left: 0; } }
+@media (max-width: 720px) { .hero { height: 30%; max-height: 180px; left: -3%; } }
 
 .spell-fx {
   position: absolute; left: 50%; top: 50%; width: 46%; max-width: 300px; aspect-ratio: 1; z-index: 3; pointer-events: none;
@@ -397,7 +400,7 @@ input {
 .modal-wide { width: min(780px, 100%); text-align: left; }
 /* 스크롤해도 제목과 닫기 버튼은 위에 붙어 있고, 내용을 가리지 않는다 */
 .modal-head { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; gap: 8px; background: var(--paper); margin: -14px -16px 8px; padding: 12px 16px 6px; border-radius: 12px 12px 0 0; }
-.modal-head h2 { flex: 1; margin: 0; }
+.modal-head h2 { flex: 1; margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .modal-close { flex-shrink: 0; width: 40px; min-height: 40px; padding: 0; box-shadow: 0 2px 0 var(--line); }
 @keyframes rise { from { transform: translateY(20px) scale(0.96); opacity: 0; } }
 .rewards { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; font-size: 1.15rem; font-family: var(--title-font); }
@@ -509,11 +512,16 @@ input {
 .gallery figcaption { font-size: 10px; word-break: break-all; line-height: 1.2; }
 
 /* ---------- 토스트 ---------- */
+/* 위쪽(HUD 아래)에 띄운다 — 아래쪽은 상점·전투의 버튼 자리라 가린다 */
 .toast {
-  position: absolute; z-index: 30; left: 50%; bottom: 12vh; transform: translateX(-50%);
-  background: rgba(43, 33, 24, 0.92); color: #fff8ea; border-radius: 999px; padding: 8px 20px;
-  font-family: var(--title-font); animation: rise 0.2s ease-out; pointer-events: none; white-space: nowrap;
+  position: absolute; z-index: 30; left: 50%; top: 84px; transform: translateX(-50%);
+  background: rgba(43, 33, 24, 0.92); color: #fff8ea; border-radius: 22px; padding: 8px 20px;
+  font-family: var(--title-font); animation: rise 0.2s ease-out; pointer-events: none;
+  max-width: calc(100% - 32px); text-align: center; line-height: 1.35;
 }
+@media (max-width: 560px) { .toast { top: 104px; } } /* HUD가 두 줄이 된다 */
+
+
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
