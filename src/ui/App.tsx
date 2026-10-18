@@ -38,14 +38,22 @@ export type Screen =
 const BACKUP_KEY = `${KEY}-backup`
 
 function loadSave(): { game: GameState | null; broken: boolean } {
+  let raw: string | null = null
   try {
-    const raw = localStorage.getItem(KEY)
-    const game = deserialize(raw)
-    if (raw && !game) localStorage.setItem(BACKUP_KEY, raw)
-    return { game, broken: Boolean(raw && !game) }
+    raw = localStorage.getItem(KEY)
   } catch {
     return { game: null, broken: false } // 저장소를 쓸 수 없는 환경 (사생활 보호 모드 등)
   }
+  const game = deserialize(raw)
+  const broken = Boolean(raw && !game)
+  if (broken) {
+    try {
+      localStorage.setItem(BACKUP_KEY, raw!)
+    } catch {
+      /* 백업을 못 써도 원본은 그대로 둔다 (아래 저장 effect가 지우지 않는다) */
+    }
+  }
+  return { game, broken }
 }
 
 export function App() {
@@ -56,11 +64,13 @@ export function App() {
   const [showQuests, setShowQuests] = useState(false)
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null)
   const saveFailed = useRef(false)
+  // 읽지 못한 세이브는 새 저장이 한 번 성공하기 전까지 지우지 않는다
+  const keepRaw = useRef(loaded.broken)
 
   useEffect(() => {
     try {
-      if (game) localStorage.setItem(KEY, serialize(game))
-      else localStorage.removeItem(KEY)
+      if (game) (localStorage.setItem(KEY, serialize(game)), (keepRaw.current = false))
+      else if (!keepRaw.current) localStorage.removeItem(KEY)
       saveFailed.current = false
     } catch {
       // 저장 실패해도 플레이는 계속하되, 한 번은 알려 준다
@@ -110,6 +120,8 @@ export function App() {
       else if (e.t === 'jobChanged') (say(`${jobById(e.job).name}(으)로 전직했다!`), sfx('levelup'))
       else if (e.t === 'respec') (say(`스텟 ${e.points}포인트를 돌려받았다.`), sfx('heal'))
       else if (e.t === 'questClaimed') (say('의뢰 완료! 보상을 받았다.'), sfx('victory'))
+      else if (e.t === 'newCycle' && e.claimed > 0) say(`받지 않은 의뢰 보상 ${e.claimed}건을 챙겼다.`)
+
     }
     return next
   }
@@ -259,9 +271,10 @@ export function App() {
           onImport={(g) => {
             setShowChar(false)
             setGame(g)
-            setScreen({ n: 'town' })
+            resume(g)
             say('세이브를 불러왔다!')
           }}
+
           onNewCycle={startNewCycle}
         />
       )}

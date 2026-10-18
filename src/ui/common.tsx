@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { Equip, Potion } from '../game/data/items'
 import * as R from '../game/rules'
 import type { Player } from '../game/types'
@@ -106,7 +107,8 @@ export function Modal({ title, onClose, children, wide }: { title?: string; onCl
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
-  return (
+  // 스크롤되는 창(캐릭터 창) 안에서 열어도 화면 밖으로 밀리지 않게 .game 바로 아래에 그린다
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div className={`panel modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         {(title || onClose) && (
@@ -121,11 +123,13 @@ export function Modal({ title, onClose, children, wide }: { title?: string; onCl
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.querySelector('.game') ?? document.body,
   )
 }
 
 /** 브라우저 기본 confirm() 대신 쓰는 확인 창 */
+
 export function Confirm({ text, yes, onYes, onNo }: { text: string; yes: string; onYes: () => void; onNo: () => void }) {
   return (
     <Modal onClose={onNo}>

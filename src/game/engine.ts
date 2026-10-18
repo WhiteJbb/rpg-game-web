@@ -71,6 +71,17 @@ export const isQuestVisible = (s: GameState, questId: string) => {
 }
 
 export const isQuestDone = (s: GameState, questId: string) => s.quests[questId].progress >= questTarget(questById(questId))
+/** 완료했지만 보상을 아직 받지 않은 의뢰 */
+export const unclaimedQuests = (s: GameState) => QUESTS.filter((q) => isQuestVisible(s, q.id) && isQuestDone(s, q.id) && !s.quests[q.id].claimed).map((q) => q.id)
+
+function claimQuest(s: GameState, questId: string) {
+  const quest = questById(questId)
+  s.quests[questId].claimed = true
+  s.player.gold += questGold(quest, s.cycle)
+  s.player.points += quest.reward.points ?? 0
+  if (quest.reward.potion) s.player.potions[quest.reward.potion]++
+}
+
 
 /** 사건 선택지의 골드 비용 (지역 기준 골드 × 배수) */
 export const choiceGoldCost = (regionId: string, choice: Choice, cycle = 0) =>
@@ -176,10 +187,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const state = s.quests[quest.id]
       if (state.claimed) return fail('이미 보상을 받았습니다')
       if (!isQuestDone(s, quest.id)) return fail('아직 완료하지 못했습니다')
-      state.claimed = true
-      p.gold += questGold(quest, s.cycle)
-      p.points += quest.reward.points ?? 0
-      if (quest.reward.potion) p.potions[quest.reward.potion]++
+      claimQuest(s, quest.id)
       emit({ t: 'questClaimed', id: quest.id })
       return s
     }
@@ -266,6 +274,9 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
 
     case 'newCycle': {
       if (!s.cleared) return fail('엔딩을 본 뒤에 시작할 수 있습니다')
+      // 받지 않은 의뢰 보상은 챙겨 준다 (의뢰 진행이 초기화되므로)
+      const unclaimed = unclaimedQuests(s)
+      for (const id of unclaimed) claimQuest(s, id)
       // 레벨·스텟·장비·골드는 그대로, 세계만 처음으로 (몬스터는 더 강해진다)
       s.cycle++
       s.progress = freshProgress()
@@ -274,7 +285,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       s.endingSeen = false
       p.hp = R.maxHp(p)
       p.mp = R.maxMp(p)
-      emit({ t: 'newCycle', cycle: s.cycle })
+      emit({ t: 'newCycle', cycle: s.cycle, claimed: unclaimed.length })
       return s
     }
 

@@ -1,4 +1,4 @@
-import { POTIONS } from './data/items'
+import { EQUIPS, POTIONS, SPELLS } from './data/items'
 import { MONSTERS } from './data/monsters'
 import { QUESTS } from './data/quests'
 import { REGIONS, regionById } from './data/regions'
@@ -27,7 +27,14 @@ export function deserialize(raw: string | null): GameState | null {
     if (!Array.isArray(p.spells) || !Array.isArray(p.owned)) return null
     if (!REGIONS.every((r) => isNum(s.progress?.[r.id]?.kills))) return null
     if (typeof p.upgrades !== 'object' || p.upgrades === null) p.upgrades = {}
+    // 숫자가 아닌 강화 값은 버린다 (그대로 두면 최대 HP·MP가 NaN이 되어 다음 저장부터 읽지 못한다)
+    for (const k of Object.keys(p.upgrades)) if (!isNum(p.upgrades[k]) || p.upgrades[k] < 0) delete p.upgrades[k]
+    // 모르는 장비·마법 id는 버리고, 보유하지 않은 장비는 벗긴다
+    p.owned = p.owned.filter((id) => EQUIPS.some((e) => e.id === id))
+    p.spells = p.spells.filter((id) => SPELLS.some((sp) => sp.id === id))
     p.accessory ??= null
+    for (const slot of ['weapon', 'armor', 'accessory'] as const) if (p[slot] !== null && !p.owned.includes(p[slot]!)) p[slot] = null
+
     if (p.job !== 'warrior' && p.job !== 'mage' && p.job !== 'rogue') p.job = null
     p.hp = Math.max(1, Math.min(p.hp, maxHp(p)))
     p.mp = Math.max(0, Math.min(p.mp, maxMp(p)))
