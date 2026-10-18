@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { eventById } from '../../game/data/events'
 import { potionById } from '../../game/data/items'
 import { monsterById } from '../../game/data/monsters'
-import { regionById, secretBossOf } from '../../game/data/regions'
+import { regionById, regionMonsters, secretBossOf } from '../../game/data/regions'
 import { canChallengeBoss, canChallengeSecret, choiceGoldCost } from '../../game/engine'
 import type { Action, GameEvent, GameState } from '../../game/types'
-import { Art, Scene } from '../art'
+import { Art, Scene, artUrl } from '../art'
 import { Gold, Modal } from '../common'
 
 interface Props {
@@ -25,6 +25,12 @@ export function Region({ game, regionId, act, onBattle, onBack, onTown }: Props)
   const boss = monsterById(region.boss, game.cycle)
   const secret = canChallengeSecret(game, regionId) ? monsterById(secretBossOf(region, game.cycle)!, game.cycle) : null
   const [result, setResult] = useState<Result | null>(null)
+  // 이 지역에서 만날 몬스터 그림과 전투 배경을 미리 받아 둔다 (첫 조우 때 그림이 늦게 뜨지 않게)
+  useEffect(() => {
+    const ids = [...regionMonsters(region, game.cycle).map((m) => m.id), region.boss, secret?.id ?? '']
+    for (const url of ids.flatMap((id) => [artUrl('monsters', id), artUrl('backgrounds', id)])) if (url) new Image().src = url
+  }, [region, game.cycle, secret?.id])
+
 
   const go = (action: Action) => {
     for (const e of act(action).events) if (e.t === 'encounter') onBattle(e.monsterId)

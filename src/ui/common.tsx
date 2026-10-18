@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Equip, Potion } from '../game/data/items'
 import * as R from '../game/rules'
@@ -100,17 +100,40 @@ export function Hud({ player, onCharacter, onQuests, questBadge = 0, jobReady = 
   )
 }
 
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+
 export function Modal({ title, onClose, children, wide }: { title?: string; onClose?: () => void; children: ReactNode; wide?: boolean }) {
+  const panel = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  // 창이 뜨기 전에 포커스가 있던 곳 (렌더 시점에 잡는다 — 커밋 뒤에는 autoFocus가 이미 창 안으로 옮긴 뒤다)
+  const opener = useRef<HTMLElement | null>(null)
+  if (opener.current === null) opener.current = document.activeElement as HTMLElement | null
+  // 포커스를 창 안에 가둔다: 열릴 때 첫 요소로, Tab은 창 안에서만 돌고, 닫히면 열기 전 요소로 돌아간다.
+  // Escape·Tab은 맨 위에 떠 있는 창만 받는다 (확인창 위에서 Escape를 눌러도 뒤의 창은 그대로)
   useEffect(() => {
-    if (!onClose) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const el = panel.current!
+    const before = opener.current
+    if (!el.contains(document.activeElement)) el.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      const all = document.querySelectorAll('.modal-backdrop')
+      if (all[all.length - 1] !== el.parentElement) return
+      if (e.key === 'Escape') return closeRef.current?.()
+      if (e.key !== 'Tab') return
+      const items = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE))
+      if (items.length === 0) return
+      const i = items.indexOf(document.activeElement as HTMLElement)
+      const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : i < 0 || i === items.length - 1 ? 0 : i + 1
+      e.preventDefault()
+      items[next].focus()
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    return () => (window.removeEventListener('keydown', onKey), before?.focus())
+  }, [])
   // 스크롤되는 창(캐릭터 창) 안에서 열어도 화면 밖으로 밀리지 않게 .game 바로 아래에 그린다
   return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
-      <div className={`panel modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div ref={panel} className={`panel modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         {(title || onClose) && (
           <div className="modal-head">
             <h2>{title}</h2>

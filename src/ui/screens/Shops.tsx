@@ -101,9 +101,10 @@ export function EquipShop({ game, act, onBack }: Props) {
   const { spend, confirm } = useBigSpend(act)
   // 보스 전용 장비는 얻은 뒤에만 목록에 나온다
   const all = EQUIPS.filter((e) => e.slot === slot && (!e.dropFrom || p.owned.includes(e.id)) && (e.cycle ?? 0) <= game.cycle)
-  // 지금 낀 장비(강화 포함)에 모든 수치가 뒤처지거나 합이 절반도 안 되는 미보유 장비는 접어 둔다
+  // 지금 낀 장비(강화 포함)에 모든 수치가 뒤처지거나 합이 절반도 안 되는 장비는 접어 둔다 (끼고 있는 것은 항상 보인다)
   const current = p[slot] ? EQUIPS.find((e) => e.id === p[slot])! : null
-  const weak = (e: Equip) => current !== null && !p.owned.includes(e.id) && (R.outclasses(p, current, e) || R.equipWorth(p, e) * 2 < R.equipWorth(p, current))
+  const weak = (e: Equip) => current !== null && e.id !== current.id && (R.outclasses(p, current, e) || R.equipWorth(p, e) * 2 < R.equipWorth(p, current))
+
   const hidden = all.filter(weak).length
   const list = showWeak ? all : all.filter((e) => !weak(e))
   return (

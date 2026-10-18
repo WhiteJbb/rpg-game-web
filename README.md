@@ -101,7 +101,7 @@ src/
 ```bash
 npm install
 npm run dev      # 개발 서버
-npm test         # 게임 로직 테스트 + 난이도 측정 (37개)
+npm test         # 게임 로직 테스트 + 난이도 측정 (38개)
 npm run build    # 타입 체크 + 프로덕션 빌드
 ```
 

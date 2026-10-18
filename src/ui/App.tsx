@@ -29,7 +29,7 @@ export type Screen =
   | { n: 'town' }
   | { n: 'map' }
   | { n: 'region'; id: string }
-  | { n: 'battle'; monsterId: string; regionId: string; seq: number }
+  | { n: 'battle'; monsterId: string; regionId: string; seq: number; resumed?: boolean }
   | { n: 'place'; place: Exclude<Place, 'gate'> }
   | { n: 'story'; bg: string; lines: string[]; next: Screen }
   | { n: 'ending' }
@@ -84,6 +84,11 @@ export function App() {
     const id = setTimeout(() => setToast(null), toast.text.length > 30 ? 5000 : 1800)
     return () => clearTimeout(id)
   }, [toast])
+  // 장면이 바뀌면 지난 장면의 안내는 지운다 (장면을 바꾸면서 띄운 것은 남긴다)
+  useEffect(() => {
+    setToast((t) => (t && Date.now() - t.key > 200 ? null : t))
+  }, [screen.n])
+
 
   // 모든 버튼에 공통 클릭음
   useEffect(() => {
@@ -128,7 +133,7 @@ export function App() {
 
   const resume = (g: GameState) =>
     setScreen(
-      g.battle ? { n: 'battle', monsterId: g.battle.monsterId, regionId: g.battle.regionId, seq: 0 } :
+      g.battle ? { n: 'battle', monsterId: g.battle.monsterId, regionId: g.battle.regionId, seq: 0, resumed: true } :
       // 최종 보스를 잡고 엔딩을 보기 전에 끊었다면 엔딩부터
       g.cleared && !g.endingSeen ? { n: 'story', bg: 'ending', lines: ENDING, next: { n: 'ending' } } :
       { n: 'town' },
@@ -186,7 +191,8 @@ export function App() {
         {debug}
         <MuteButton className="mute-float" />
         <Title
-          hasSave={game !== null}
+          save={game}
+
           broken={loaded.broken && game === null}
           onContinue={() => resume(game!)}
           onNew={(name) => {
@@ -238,6 +244,7 @@ export function App() {
           monsterId={screen.monsterId}
           regionId={screen.regionId}
           act={act}
+          resumed={screen.resumed}
           onExit={(outcome) => afterBattle(outcome, screen.regionId, screen.monsterId)}
         />
       )
