@@ -1,6 +1,6 @@
 import { EVENTS } from './data/events'
 import { EQUIPS, POTIONS, SPELLS, type Equip } from './data/items'
-import { canTakeJob, jobById } from './data/jobs'
+import { JOBS, canTakeJob, jobById } from './data/jobs'
 import { monsterById } from './data/monsters'
 import { QUESTS } from './data/quests'
 import { REGIONS } from './data/regions'
@@ -64,6 +64,9 @@ export function simulate(build: Build, seed: number, cycles = 1, secretBoss = fa
       act({ type: 'allocate', stat, amount: 1 })
     }
     if (!p().job && canTakeJob(p(), build)) act({ type: 'changeJob', job: build })
+    const promo = JOBS.find((j) => j.from === p().job)
+    if (promo && canTakeJob(p(), promo.id)) act({ type: 'changeJob', job: promo.id })
+
     for (const slot of ['weapon', 'armor', 'accessory'] as const) {
       const current = p()[slot]
       const best = EQUIPS.filter((e) => e.slot === slot && !e.dropFrom && (e.cycle ?? 0) <= s.cycle && !p().owned.includes(e.id) && e.price <= p().gold * 0.8)

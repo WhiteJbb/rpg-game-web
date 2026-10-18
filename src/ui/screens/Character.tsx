@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { EQUIPS, POTIONS, SLOTS, SPELLS, equipById } from '../../game/data/items'
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
-import { JOBS, JOB_LEVEL, JOB_NEED, canTakeJob, jobById, type JobId } from '../../game/data/jobs'
+import { JOBS, JOB2_LEVEL, JOB_LEVEL, canTakeJob, jobById, jobNeed, type JobId } from '../../game/data/jobs'
 
 import { unclaimedQuests } from '../../game/engine'
 import { Art, heroArt } from '../art'
@@ -67,7 +67,7 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
       {asking === 'save' && <SaveManager game={game} onImport={onImport} onClose={() => setAsking(null)} />}
       {asking !== null && typeof asking === 'object' && 'job' in asking && (
         <Confirm
-          text={`${jobById(asking.job).name}(으)로 전직할까요?${R.jobChangeCost(p) > 0 ? ` ${R.jobChangeCost(p).toLocaleString()} 골드가 듭니다.` : ' 나중에 다른 직업으로 바꾸려면 골드가 듭니다.'}`}
+          text={`${jobById(asking.job).name}(으)로 전직할까요?${R.jobChangeCost(p, asking.job) > 0 ? ` ${R.jobChangeCost(p, asking.job).toLocaleString()} 골드가 듭니다.` : ' 나중에 다른 계열로 바꾸려면 골드가 듭니다.'}`}
           yes="전직"
           onYes={() => (act({ type: 'changeJob', job: asking.job }), setAsking(null))}
           onNo={() => setAsking(null)}
@@ -141,12 +141,17 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
           </ul>
 
           <h3>
-            직업 <small>{p.job ? jobById(p.job).name : p.level < JOB_LEVEL ? `Lv.${JOB_LEVEL}부터 전직 가능` : '전직 가능'}</small>
+            직업{' '}
+            <small>
+              {p.job ? `${jobById(p.job).name}${jobById(p.job).tier === 1 ? ` · Lv.${JOB2_LEVEL}부터 2차 전직` : ''}` : p.level < JOB_LEVEL ? `Lv.${JOB_LEVEL}부터 전직 가능` : '전직 가능'}
+            </small>
           </h3>
           <div className="jobs">
-            {JOBS.map((job) => {
+            {/* 1차 직업은 늘 보이고, 2차 직업은 내 계열의 것만 */}
+            {JOBS.filter((job) => job.tier === 1 || job.from === p.job || job.id === p.job).map((job) => {
               const current = p.job === job.id
               const ok = canTakeJob(p, job.id)
+              const cost = R.jobChangeCost(p, job.id)
               return (
                 <div key={job.id} className={`job ${current ? 'job-current' : ''}`}>
                   <Art kind="characters" id={heroArt(job.id)} alt="" className="job-art" fallback="🧑‍🌾" />
@@ -156,15 +161,16 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
                     <small>
                       {job.passive} · <b>{job.skill.name}</b>: {job.skill.desc}
                     </small>
-                    <small className={ok || current ? 'job-ok' : 'job-need'}>조건: {job.requirement}{!current && ` (지금 ${job.current(p)}/${JOB_NEED}, 장비 보너스 제외)`}</small>
+                    <small className={ok || current ? 'job-ok' : 'job-need'}>조건: {job.requirement}{!current && ` (지금 ${job.current(p)}/${jobNeed(job)}, 장비 보너스 제외)`}</small>
                   </div>
                   {current ? (
                     <span className="owned">현재 직업</span>
                   ) : (
-                    <button className="btn btn-buy" disabled={!ok || p.gold < R.jobChangeCost(p)} onClick={() => setAsking({ job: job.id })}>
-                      전직 {R.jobChangeCost(p) > 0 && <Gold amount={R.jobChangeCost(p)} />}
+                    <button className="btn btn-buy" disabled={!ok || p.gold < cost} onClick={() => setAsking({ job: job.id })}>
+                      전직 {cost > 0 && <Gold amount={cost} />}
                     </button>
                   )}
+
                 </div>
               )
             })}

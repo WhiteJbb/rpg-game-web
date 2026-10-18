@@ -343,9 +343,10 @@ describe('engine', () => {
     expect(s.player.gold).toBe(50)
     expect(R.maxHp(s.player)).toBeGreaterThan(hpBefore)
     s.player.stats.int = 25
-    s.player.gold = R.jobChangeCost(s.player) - 1
+    s.player.gold = R.jobChangeCost(s.player, 'mage') - 1
     expect(errorOf(reduce(s, { type: 'changeJob', job: 'mage' }, seeded(1)))).toBeTruthy()
-    s.player.gold = R.jobChangeCost(s.player)
+    s.player.gold = R.jobChangeCost(s.player, 'mage')
+
     s.player.hp = R.maxHp(s.player)
     s = reduce(s, { type: 'changeJob', job: 'mage' }, seeded(1))
     expect(s.player.job).toBe('mage')
@@ -353,7 +354,50 @@ describe('engine', () => {
     expect(s.player.hp).toBe(R.maxHp(s.player)) // 전사의 HP 보너스가 빠지면 현재 HP도 맞춘다
   })
 
+  it('2차 전직: 같은 계열 1차 직업 + Lv.25 + 기본 스텟 50, 승급은 무료, 패시브와 기술이 강해진다', () => {
+    let s = newGame('t')
+    s.player.job = 'warrior'
+    s.player.level = 25
+    s.player.stats.str = 50
+    s.player.gold = 0
+    expect(errorOf(reduce(s, { type: 'changeJob', job: 'archmage' }, seeded(1)))).toBeTruthy() // 계열이 다르다
+    s.player.level = 24
+    expect(errorOf(reduce(s, { type: 'changeJob', job: 'knight' }, seeded(1)))).toBeTruthy() // 레벨 부족
+    s.player.level = 25
+    s.player.stats.str = 49
+    expect(errorOf(reduce(s, { type: 'changeJob', job: 'knight' }, seeded(1)))).toBeTruthy() // 힘 부족
+    s.player.stats.str = 50
+    expect(R.jobChangeCost(s.player, 'knight')).toBe(0)
+    expect(R.jobChangeCost(s.player, 'mage')).toBeGreaterThan(0)
+    const hpWarrior = R.maxHp(s.player)
+    s = reduce(s, { type: 'changeJob', job: 'knight' }, seeded(1))
+    expect(s.player.job).toBe('knight')
+    expect(s.player.gold).toBe(0)
+    expect(R.maxHp(s.player)).toBeGreaterThan(hpWarrior)
+
+    // 기사의 파쇄는 방어를 전부 무시해 같은 난수에서 강타보다 세다
+    const battle = (job: 'warrior' | 'knight' | 'rogue' | 'assassin') => {
+      const g = newGame('t')
+      g.player = { ...g.player, job, level: 25, mp: 99, stats: { ...g.player.stats, str: 50, agi: 0 } }
+      g.battle = { ...newBattle('vampire-lord', 'vampire-castle'), monsterHp: 99999 }
+      return reduce(g, { type: 'skill' }, seeded(3))
+    }
+    const dealt = (g: GameState) => 99999 - g.battle!.monsterHp
+    expect(dealt(battle('knight'))).toBeGreaterThan(dealt(battle('warrior')))
+    const assassin = battle('assassin')
+    expect(dealt(assassin)).toBeGreaterThan(dealt(battle('rogue')))
+    expect(assassin.battle!.venom!.turns).toBeGreaterThan(battle('rogue').battle!.venom!.turns) // 더 오래 간다
+
+    // 대마법사는 MP가 덜 들고 폭주 뒤 마법이 2배
+    const mage = newGame('t').player
+    mage.job = 'mage'
+    const arch = { ...mage, job: 'archmage' as const }
+    expect(R.spellCost(arch, 100)).toBeLessThan(R.spellCost(mage, 100))
+    expect(R.dodgeChance({ ...mage, job: 'assassin', stats: { ...mage.stats, agi: 99 } })).toBe(0.6)
+  })
+
   it('직업 기술: 전직 전에는 못 쓰고, 직업마다 효과가 다르다', () => {
+
     const base = newGame('t')
     base.player.level = 10
     base.player.mp = 50

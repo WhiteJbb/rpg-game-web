@@ -1,6 +1,6 @@
 import { EVENTS, eventById, type Choice } from './data/events'
 import { EQUIPS, equipById, potionById, spellById } from './data/items'
-import { canTakeJob, jobById } from './data/jobs'
+import { canTakeJob, jobById, jobLine, jobTier } from './data/jobs'
 import { monsterById, type Monster, type Special } from './data/monsters'
 import { QUESTS, questById, questGold, questTarget } from './data/quests'
 import { REGIONS, regionById, regionMonsters, secretBossOf } from './data/regions'
@@ -251,7 +251,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
     case 'changeJob': {
       if (p.job === action.job) return fail('이미 그 직업입니다')
       if (!canTakeJob(p, action.job)) return fail('전직 조건을 채우지 못했습니다')
-      const cost = R.jobChangeCost(p)
+      const cost = R.jobChangeCost(p, action.job)
       if (!spend(cost)) return fail('골드가 부족합니다')
       p.job = action.job
       clampVitals(p)
@@ -353,7 +353,7 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const cost = R.spellCost(p, spell.mp)
       if (p.mp < cost) return fail('MP가 부족합니다')
       p.mp -= cost
-      const raw = R.spellPower(p, spell.power) * between(rng, 0.9, 1.1) * (b.focus ? R.FOCUS_MULT : 1)
+      const raw = R.spellPower(p, spell.power) * between(rng, 0.9, 1.1) * (b.focus ? (jobTier(p.job) === 2 ? R.SURGE_FOCUS_MULT : R.FOCUS_MULT) : 1)
       b.focus = false
       const res = spell.effect === 'pierce' ? m.res * R.PIERCE_RES : m.res
       const dmg = Math.min(b.monsterHp, R.resist(raw, res))
@@ -383,15 +383,17 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       if (p.mp < skill.mp) return fail('MP가 부족합니다')
       p.mp -= skill.mp
       let dmg = 0
-      if (p.job === 'mage') {
-        // 명상: 공격하지 않고 MP를 채우며 다음 마법을 벼린다
-        p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * R.MEDITATE_MP))
+      const line = jobLine(p.job)
+      const t2 = jobTier(p.job) === 2
+      if (line === 'mage') {
+        // 명상(마력 폭주): 공격하지 않고 MP를 채우며 다음 마법을 벼린다
+        p.mp = Math.min(R.maxMp(p), p.mp + Math.round(R.maxMp(p) * (t2 ? R.SURGE_MP : R.MEDITATE_MP)))
         b.focus = true
-      } else if (p.job === 'warrior') {
-        const raw = R.attackPower(p) * R.SMASH_MULT * between(rng, 0.9, 1.1)
-        dmg = Math.min(b.monsterHp, R.mitigate(raw, m.def * R.SMASH_PIERCE))
+      } else if (line === 'warrior') {
+        const raw = R.attackPower(p) * (t2 ? R.CRUSH_MULT : R.SMASH_MULT) * between(rng, 0.9, 1.1)
+        dmg = Math.min(b.monsterHp, R.mitigate(raw, m.def * (t2 ? R.CRUSH_PIERCE : R.SMASH_PIERCE)))
       } else {
-        const raw = R.attackPower(p) * R.CRIT_MULT * between(rng, 0.9, 1.1)
+        const raw = R.attackPower(p) * (t2 ? R.ASSASSINATE_MULT : R.CRIT_MULT) * between(rng, 0.9, 1.1)
         dmg = Math.min(b.monsterHp, R.mitigate(raw, m.def))
       }
       b.monsterHp -= dmg
@@ -400,8 +402,9 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
         win(s, m, rng)
         return s
       }
-      if (p.job === 'rogue') {
-        b.venom = { turns: R.VENOM_TURNS, dmg: Math.max(1, Math.round(dmg * R.VENOM_RATIO)) }
+      if (line === 'rogue') {
+        b.venom = { turns: t2 ? R.VENOM2_TURNS : R.VENOM_TURNS, dmg: Math.max(1, Math.round(dmg * (t2 ? R.VENOM2_RATIO : R.VENOM_RATIO))) }
+
         emit({ t: 'status', target: 'monster', kind: 'venom' })
       }
       enemyPhase(s, rng, false)

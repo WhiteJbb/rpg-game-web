@@ -1,4 +1,5 @@
 import { EQUIPS, POTIONS, SPELLS } from './data/items'
+import { JOBS } from './data/jobs'
 import { MONSTERS } from './data/monsters'
 import { QUESTS } from './data/quests'
 import { REGIONS, regionById } from './data/regions'
@@ -35,7 +36,8 @@ export function deserialize(raw: string | null): GameState | null {
     p.accessory ??= null
     for (const slot of ['weapon', 'armor', 'accessory'] as const) if (p[slot] !== null && !p.owned.includes(p[slot]!)) p[slot] = null
 
-    if (p.job !== 'warrior' && p.job !== 'mage' && p.job !== 'rogue') p.job = null
+    if (!JOBS.some((j) => j.id === p.job)) p.job = null
+
     p.hp = Math.max(1, Math.min(p.hp, maxHp(p)))
     p.mp = Math.max(0, Math.min(p.mp, maxMp(p)))
 

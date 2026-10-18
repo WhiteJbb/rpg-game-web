@@ -4,6 +4,7 @@ import { newGame, reduce } from '../game/engine'
 import { SAVE_KEY, deserialize, serialize } from '../game/save'
 import type { Action, GameState } from '../game/types'
 import { JOBS, canTakeJob, jobById } from '../game/data/jobs'
+import * as R from '../game/rules'
 import { monsterById } from '../game/data/monsters'
 import { isSecretBoss } from '../game/data/regions'
 import { Scene } from './art'
@@ -263,7 +264,8 @@ export function App() {
   return (
     <div className="game">
       {debug}
-      {!inBattle && screen.n !== 'story' && screen.n !== 'ending' ? <Hud player={game.player} jobReady={!game.player.job && JOBS.some((j) => canTakeJob(game.player, j.id))} onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
+      {!inBattle && screen.n !== 'story' && screen.n !== 'ending' ? <Hud player={game.player} jobReady={JOBS.some((j) => j.id !== game.player.job && canTakeJob(game.player, j.id) && R.jobChangeCost(game.player, j.id) === 0)}
+ onCharacter={() => setShowChar(true)} onQuests={() => setShowQuests(true)} questBadge={claimableQuests(game)} /> : <MuteButton className="mute-float" />}
       {body}
       {showChar && (
         <Character
