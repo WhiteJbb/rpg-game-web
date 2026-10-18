@@ -47,6 +47,8 @@ const BOSS_HP = 2.6
 const BOSS_ATK = 1.2
 const SECRET_HP_PER_CYCLE = 0.04
 const SECRET_ATK_PER_CYCLE = 0.02
+/** 이 회차부터는 숨은 보스 배율이 더 오르지 않는다 (직선 성장에 비율을 계속 곱하면 제곱이 되어 높은 회차에서 벽이 된다) */
+const SECRET_CAP_CYCLES = 10
 
 /**
  * 1회차 범위(숨은 보스 레벨)까지는 제곱 곡선, 그 뒤로는 직선으로 오른다. 플레이어의 성장(레벨당 스텟, 강화)이
@@ -66,8 +68,10 @@ const curve = (l: number, a: number, b: number, c: number, slope: number) => {
 function build({ id, name, level, mods, specials }: Def, cycle: number): Monster {
   const boss = mods.boss ?? false
   const l = level + cycle * CYCLE_LEVELS
-  const secretHp = mods.secret ? 1 + SECRET_HP_PER_CYCLE * cycle : 1
-  const secretAtk = mods.secret ? 1 + SECRET_ATK_PER_CYCLE * cycle : 1
+  const secretCycle = Math.min(cycle, SECRET_CAP_CYCLES)
+  const secretHp = mods.secret ? 1 + SECRET_HP_PER_CYCLE * secretCycle : 1
+  const secretAtk = mods.secret ? 1 + SECRET_ATK_PER_CYCLE * secretCycle : 1
+
   return {
     id,
     name,

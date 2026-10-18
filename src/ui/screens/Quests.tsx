@@ -1,12 +1,12 @@
 import { potionById } from '../../game/data/items'
 import { QUESTS, questGold, questTarget } from '../../game/data/quests'
-import { isQuestDone, isQuestVisible } from '../../game/engine'
+import { isQuestDone, isQuestVisible, unclaimedQuests } from '../../game/engine'
 import type { Action, GameState } from '../../game/types'
 import { Bar, Gold, Modal } from '../common'
 
 /** 보상을 받을 수 있는 의뢰 수 (HUD 배지용) */
-export const claimableQuests = (game: GameState) =>
-  QUESTS.filter((q) => isQuestVisible(game, q.id) && isQuestDone(game, q.id) && !game.quests[q.id].claimed).length
+export const claimableQuests = (game: GameState) => unclaimedQuests(game).length
+
 
 interface Props {
   game: GameState

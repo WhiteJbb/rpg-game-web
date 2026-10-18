@@ -3,6 +3,7 @@ import { EQUIPS, POTIONS, SLOTS, SPELLS, equipById } from '../../game/data/items
 import * as R from '../../game/rules'
 import type { Action, GameState, StatKey } from '../../game/types'
 import { JOBS, JOB_LEVEL, JOB_NEED, canTakeJob, jobById } from '../../game/data/jobs'
+import { unclaimedQuests } from '../../game/engine'
 import { Art, heroArt } from '../art'
 import { Bar, Confirm, Gold, Modal, SLOT_ICON, equipBonus, equipName, potionDesc } from '../common'
 import { SaveManager } from './SaveManager'
@@ -37,8 +38,9 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
   const [resetting, setResetting] = useState(false)
   const [step, setStep] = useState<(typeof STEPS)[number]>(1)
   const [asking, setAsking] = useState<null | 'respec' | 'cycle' | 'save' | { stat: StatKey; amount: number }>(null)
-  // 확률 상한에 닿은 스텟은 더 못 올린다 (포인트만 버리게 된다). '전부'도 상한까지만
-  const room = (k: StatKey) => (R.STAT_CAP[k] === undefined ? Infinity : Math.max(0, R.STAT_CAP[k]! - R.totalStat(p, k)))
+  // 확률 상한에 닿은 스텟은 더 못 올린다 (포인트만 버리게 된다). '전부'도 상한까지만.
+  // 기본 스텟 기준이다 — 장비 포함으로 재면 장비 때문에 전직 조건(기본 스텟)을 못 채우는 막다른 길이 생긴다
+  const room = (k: StatKey) => (R.STAT_CAP[k] === undefined ? Infinity : Math.max(0, R.STAT_CAP[k]! - p.stats[k]))
   const amount = (k: StatKey) => Math.min(step === 'all' ? p.points : step, p.points, room(k))
   const spent = Object.values(p.stats).reduce((a, b) => a + b, 0) - 20
   if (resetting) return <Confirm text="정말 모든 진행을 지우고 처음으로 돌아갈까요?" yes="전부 지운다" onYes={onReset} onNo={() => setResetting(false)} />
@@ -54,7 +56,8 @@ export function Character({ game, act, onClose, onReset, onImport, onNewCycle }:
       )}
       {asking === 'cycle' && (
         <Confirm
-          text="레벨·스텟·장비·골드는 그대로 두고 세계를 처음으로 되돌립니다. 몬스터가 훨씬 강해지고, 지역과 의뢰 진행은 초기화됩니다."
+          text={`레벨·스텟·장비·골드는 그대로 두고 세계를 처음으로 되돌립니다. 몬스터가 훨씬 강해지고, 지역과 의뢰 진행은 초기화됩니다.${unclaimedQuests(game).length > 0 ? ` 받지 않은 의뢰 보상 ${unclaimedQuests(game).length}건은 자동으로 받습니다.` : ''}`}
+
           yes="다음 회차로"
           onYes={onNewCycle}
           onNo={() => setAsking(null)}

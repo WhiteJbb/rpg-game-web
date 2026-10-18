@@ -88,7 +88,8 @@ export type GameEvent =
   | { t: 'questClaimed'; id: string }
   | { t: 'respec'; cost: number; points: number }
   | { t: 'upgraded'; id: string; level: number }
-  | { t: 'newCycle'; cycle: number }
+  | { t: 'newCycle'; cycle: number; claimed: number }
+
   | { t: 'playerAttack'; dmg: number; crit: boolean; monsterHp: number }
   | { t: 'playerSpell'; spellId: string; dmg: number; monsterHp: number; mp: number }
   | { t: 'playerDefend'; mp: number }

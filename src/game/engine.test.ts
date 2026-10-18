@@ -167,6 +167,16 @@ describe('engine', () => {
     stale.battle = { monsterId: 'removed-monster', regionId: 'meadow', isBoss: false, monsterHp: 5, charging: null }
     expect(deserialize(JSON.stringify(stale))?.battle).toBeNull()
     expect(deserialize(null)).toBeNull()
+    // 값이 깨진 강화·모르는 장비는 버리고 세이브는 살린다 (NaN이 되면 다음 저장부터 읽지 못한다)
+    const dirty = JSON.parse(serialize(s))
+    dirty.player.upgrades = { 'bronze-sword': 'bad', 'leather-armor': -1, 'iron-sword': 2 }
+    dirty.player.owned = ['bronze-sword', 'no-such-equip']
+    dirty.player.weapon = 'no-such-equip'
+    const fixed = deserialize(JSON.stringify(dirty))!
+    expect(fixed.player.upgrades).toEqual({ 'iron-sword': 2 })
+    expect(fixed.player.owned).toEqual(['bronze-sword'])
+    expect(fixed.player.weapon).toBeNull()
+    expect(Number.isFinite(R.maxMp(fixed.player))).toBe(true)
     // 스텟이 하나 빠진 세이브는 MP가 NaN이 되므로 거절한다
     const noInt = JSON.parse(serialize(s))
     delete noInt.player.stats.int
@@ -423,11 +433,17 @@ describe('engine', () => {
     s.player.gold = 777
     s.progress.meadow.bossDefeated = true
     s.quests['meadow-hunt'] = { progress: 6, claimed: true }
+    // 받지 않은 의뢰 보상은 회차를 넘길 때 자동으로 받는다
+    s.quests['meadow-boss'] = { progress: 1, claimed: false }
+    const bossQuest = QUESTS.find((q) => q.id === 'meadow-boss')!
+    const points = s.player.points
     s = reduce(s, { type: 'newCycle' }, seeded(1))
     expect(s.cycle).toBe(1)
     expect(s.cleared).toBe(false)
     expect(s.player.level).toBe(26)
-    expect(s.player.gold).toBe(777)
+    expect(s.player.gold).toBe(777 + questGold(bossQuest, 0))
+    expect(s.player.points).toBe(points + (bossQuest.reward.points ?? 0))
+    expect(s.events).toContainEqual({ t: 'newCycle', cycle: 1, claimed: 1 })
     expect(isRegionOpen(s, 'wolf-den')).toBe(false)
     expect(s.quests['meadow-hunt']).toEqual({ progress: 0, claimed: false })
     expect(monsterById('slime', 1).level).toBe(27)
@@ -480,7 +496,15 @@ describe('engine', () => {
     expect(seen.has('beehive')).toBe(true)
   })
 
+  it('숨은 보스 회차 배율은 10회차에서 멈춘다 (그 뒤로는 다른 몬스터처럼 직선 성장)', () => {
+    const hp = (c: number) => monsterById('ancient-dragon', c).hp
+    const step = (c: number) => hp(c + 1) - hp(c)
+    expect(step(5)).toBeGreaterThan(step(2) * 1.05) // 10회차 전에는 배율이 붙어 가속
+    expect(Math.abs(step(50) - step(20))).toBeLessThanOrEqual(3) // 그 뒤로는 일정
+  })
+
   it('데이터의 id 참조가 모두 유효하다', () => {
+
     for (const r of REGIONS) {
       for (const m of r.monsters) expect(monsterById(m.id).boss).toBe(false)
       expect(monsterById(r.boss).boss).toBe(true)

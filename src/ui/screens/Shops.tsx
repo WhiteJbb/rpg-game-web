@@ -65,27 +65,40 @@ export function PotionShop({ game, act, onBack }: Props) {
   )
 }
 
+/** 이 금액부터는 한 번 더 묻는다 (구매·강화 버튼이 같은 자리라 잘못 누르기 쉽다) */
+const BIG_SPEND = 10000
+
+function useBigSpend(act: Props['act']) {
+  const [asking, setAsking] = useState<{ text: string; yes: string; action: Action } | null>(null)
+  const spend = (action: Action, price: number, text: string, yes: string) => (price >= BIG_SPEND ? setAsking({ text, yes, action }) : act(action))
+  const confirm = asking && <Confirm text={asking.text} yes={asking.yes} onYes={() => (act(asking.action), setAsking(null))} onNo={() => setAsking(null)} />
+  return { spend, confirm }
+}
+
 export function MagicShop({ game, act, onBack }: Props) {
   const p = game.player
+  const { spend, confirm } = useBigSpend(act)
   return (
     <Shop bg="shop-magic" title="마법상점" onBack={onBack}>
+      {confirm}
       {SPELLS.filter((sp) => (sp.cycle ?? 0) <= game.cycle).map((sp) => (
         <Good key={sp.id} id={sp.id} name={sp.name} tag={sp.cycle ? `${sp.cycle + 1}회차` : undefined} fallback="✨" desc={`위력 ${sp.power} · MP ${sp.mp} · ${sp.desc}`}>
-          {p.spells.includes(sp.id) ? <span className="owned">습득함</span> : <BuyButton price={sp.price} gold={p.gold} onClick={() => act({ type: 'buySpell', spellId: sp.id })} />}
+          {p.spells.includes(sp.id) ? (
+            <span className="owned">습득함</span>
+          ) : (
+            <BuyButton price={sp.price} gold={p.gold} onClick={() => spend({ type: 'buySpell', spellId: sp.id }, sp.price, `${josa(sp.name, '을', '를')} ${sp.price.toLocaleString()} 골드에 배울까요?`, '배운다')} />
+          )}
         </Good>
       ))}
     </Shop>
   )
 }
 
-/** 이 금액부터는 한 번 더 묻는다 (구매·강화 버튼이 같은 자리라 잘못 누르기 쉽다) */
-const BIG_SPEND = 10000
-
 export function EquipShop({ game, act, onBack }: Props) {
   const p = game.player
   const [slot, setSlot] = useState<Equip['slot']>('weapon')
   const [showWeak, setShowWeak] = useState(false)
-  const [asking, setAsking] = useState<{ text: string; yes: string; action: Action } | null>(null)
+  const { spend, confirm } = useBigSpend(act)
   // 보스 전용 장비는 얻은 뒤에만 목록에 나온다
   const all = EQUIPS.filter((e) => e.slot === slot && (!e.dropFrom || p.owned.includes(e.id)) && (e.cycle ?? 0) <= game.cycle)
   // 지금 낀 장비(강화 포함)에 모든 수치가 뒤처지거나 합이 절반도 안 되는 미보유 장비는 접어 둔다
@@ -93,10 +106,10 @@ export function EquipShop({ game, act, onBack }: Props) {
   const weak = (e: Equip) => current !== null && !p.owned.includes(e.id) && (R.outclasses(p, current, e) || R.equipWorth(p, e) * 2 < R.equipWorth(p, current))
   const hidden = all.filter(weak).length
   const list = showWeak ? all : all.filter((e) => !weak(e))
-  const spend = (action: Action, price: number, text: string, yes: string) => (price >= BIG_SPEND ? setAsking({ text, yes, action }) : act(action))
   return (
     <Shop bg="shop-equip" title="대장간" onBack={onBack}>
-      {asking && <Confirm text={asking.text} yes={asking.yes} onYes={() => (act(asking.action), setAsking(null))} onNo={() => setAsking(null)} />}
+      {confirm}
+
       <div className="tabs" role="tablist">
         {SLOTS.map((s) => (
           <button key={s.id} role="tab" aria-selected={slot === s.id} className={`btn btn-small ${slot === s.id ? 'btn-primary' : ''}`} onClick={() => setSlot(s.id)}>
