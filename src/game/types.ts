@@ -1,6 +1,9 @@
 export type StatKey = 'str' | 'agi' | 'def' | 'int' | 'crit' | 'luck'
 export const STAT_KEYS: StatKey[] = ['str', 'agi', 'def', 'int', 'crit', 'luck']
 export type PotionId = 'hp-s' | 'hp-m' | 'hp-l' | 'mp' | 'elixir'
+/** 1차: 전사·마법사·도적, 2차: 기사·대마법사·암살자 (data/jobs.ts) */
+export type JobId = 'warrior' | 'mage' | 'rogue' | 'knight' | 'archmage' | 'assassin'
+
 export type Rng = () => number
 
 export interface Player {
@@ -19,7 +22,7 @@ export interface Player {
   armor: string | null
   accessory: string | null
   /** 전직한 직업 (없으면 null) */
-  job: 'warrior' | 'mage' | 'rogue' | null
+  job: JobId | null
   /** 장비별 강화 단계 */
   upgrades: Record<string, number>
 }
@@ -81,8 +84,8 @@ export type GameEvent =
   | { t: 'status'; target: 'monster' | 'player'; kind: StatusKind }
   | { t: 'burnTick'; dmg: number; monsterHp: number }
   | { t: 'venomTick'; dmg: number; monsterHp: number }
-  | { t: 'skill'; job: 'warrior' | 'mage' | 'rogue'; dmg: number; monsterHp: number; mp: number }
-  | { t: 'jobChanged'; job: 'warrior' | 'mage' | 'rogue'; cost: number }
+  | { t: 'skill'; job: JobId; dmg: number; monsterHp: number; mp: number }
+  | { t: 'jobChanged'; job: JobId; cost: number }
   | { t: 'poisonTick'; dmg: number; playerHp: number }
   | { t: 'monsterStunned' }
   | { t: 'questClaimed'; id: string }
@@ -141,7 +144,8 @@ export type Action =
   | { type: 'choose'; index: number }
   | { type: 'claimQuest'; questId: string }
   | { type: 'respec' }
-  | { type: 'changeJob'; job: 'warrior' | 'mage' | 'rogue' }
+  | { type: 'changeJob'; job: JobId }
+
   | { type: 'upgradeEquip'; equipId: string }
   | { type: 'newCycle' }
   | { type: 'ackEnding' }

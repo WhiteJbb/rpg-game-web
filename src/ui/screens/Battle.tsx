@@ -3,7 +3,7 @@ import { POTIONS, SPELLS, equipById, potionById, spellById } from '../../game/da
 import { monsterById } from '../../game/data/monsters'
 import * as R from '../../game/rules'
 import type { Action, GameEvent, GameState, StatusKind, Victory } from '../../game/types'
-import { jobById } from '../../game/data/jobs'
+import { jobById, jobLine } from '../../game/data/jobs'
 import { Art, Scene, artUrl, heroArt } from '../art'
 import { Bar, Gold, Modal, josa, potionDesc } from '../common'
 import { sfx } from '../sfx'
@@ -130,7 +130,8 @@ export function Battle({ game, monsterId, regionId, act, onExit, resumed }: Prop
         const skill = jobById(e.job).skill
         setCaption(`${skill.name}!`)
         setShown((s) => ({ ...s, pmp: e.mp, mhp: e.monsterHp }))
-        if (e.job === 'mage') {
+        if (jobLine(e.job) === 'mage') {
+
           sfx('heal')
           setHeroAnim('hero-cast')
           pop('player', '집중!', 'heal')

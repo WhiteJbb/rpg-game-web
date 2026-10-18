@@ -1,5 +1,6 @@
 import { equipById, type Equip, type Potion } from './data/items'
-import { STAT_KEYS, type Player, type StatKey } from './types'
+import { jobById, jobLine, jobTier } from './data/jobs'
+import { STAT_KEYS, type JobId, type Player, type StatKey } from './types'
 
 export const POINTS_PER_LEVEL = 4
 export const MAX_LEVEL = 999
@@ -11,10 +12,17 @@ export const SLOT_SYMBOLS = 5 // 0번 심볼이 잭팟(왕관)
 export const EVENT_CHANCE = 0.15
 export const SMASH_MULT = 1.6 // 전사 강타
 export const SMASH_PIERCE = 0.5
+export const CRUSH_MULT = 1.9 // 기사 파쇄: 방어를 전부 무시
+export const CRUSH_PIERCE = 0
 export const MEDITATE_MP = 0.35 // 마법사 명상으로 돌아오는 MP 비율
 export const FOCUS_MULT = 1.5
+export const SURGE_MP = 0.5 // 대마법사 마력 폭주
+export const SURGE_FOCUS_MULT = 2
 export const VENOM_TURNS = 3
 export const VENOM_RATIO = 0.2
+export const ASSASSINATE_MULT = 2.1 // 암살자 암살 (치명타 1.75배보다 세다)
+export const VENOM2_TURNS = 4
+export const VENOM2_RATIO = 0.3
 export const BURN_TURNS = 3
 export const BURN_RATIO = 0.3 // 맞힌 피해 대비 턴당 화상 피해
 export const CHILL_TURNS = 2
@@ -25,13 +33,16 @@ export const PIERCE_RES = 0.3
 
 export const expToNext = (level: number) => Math.round(28 * Math.pow(level, 1.42))
 export const WARRIOR_HP = 1.1
+export const KNIGHT_HP = 1.2
 export const MAGE_MP_COST = 0.8
+export const ARCHMAGE_MP_COST = 0.65
 export const ROGUE_DODGE = 0.1
-export const maxHp = (p: Player) => Math.round((100 + (p.level - 1) * 18) * (p.job === 'warrior' ? WARRIOR_HP : 1))
+export const ASSASSIN_DODGE = 0.15
+export const maxHp = (p: Player) => Math.round((100 + (p.level - 1) * 18) * (jobLine(p.job) === 'warrior' ? (jobTier(p.job) === 2 ? KNIGHT_HP : WARRIOR_HP) : 1))
 /** 마법의 실제 MP 소모 (마법사는 덜 든다) */
-export const spellCost = (p: Player, mp: number) => (p.job === 'mage' ? Math.ceil(mp * MAGE_MP_COST) : mp)
-/** 두 번째 전직부터 드는 비용 */
-export const jobChangeCost = (p: Player) => (p.job ? p.level * 50 : 0)
+export const spellCost = (p: Player, mp: number) => (jobLine(p.job) === 'mage' ? Math.ceil(mp * (jobTier(p.job) === 2 ? ARCHMAGE_MP_COST : MAGE_MP_COST)) : mp)
+/** 전직 비용: 첫 전직과 같은 계열의 2차 전직은 무료, 계열을 바꾸면 든다 */
+export const jobChangeCost = (p: Player, to: JobId) => (!p.job || jobById(to).from === p.job ? 0 : p.level * 50)
 
 /** 강화 상한. 회차가 오를 때마다 더 올릴 수 있다 */
 /** 포션 회복량: 고정량과 최대치 비율 중 큰 쪽 */
@@ -87,7 +98,10 @@ export const spellPower = (p: Player, base: number) => base * (1 + totalStat(p, 
 
 // 확률 스텟은 전부 상한이 있다 (원작의 회피 100% 무적 문제 방지)
 export const dodgeChance = (p: Player) =>
-  p.job === 'rogue' ? Math.min(0.55, totalStat(p, 'agi') * 0.01 + ROGUE_DODGE) : Math.min(0.45, totalStat(p, 'agi') * 0.01)
+  jobLine(p.job) !== 'rogue' ? Math.min(0.45, totalStat(p, 'agi') * 0.01) :
+  jobTier(p.job) === 2 ? Math.min(0.6, totalStat(p, 'agi') * 0.01 + ASSASSIN_DODGE) :
+  Math.min(0.55, totalStat(p, 'agi') * 0.01 + ROGUE_DODGE)
+
 export const critChance = (p: Player) => Math.min(0.6, 0.05 + totalStat(p, 'crit') * 0.015)
 export const fleeChance = (p: Player) => Math.min(0.9, 0.5 + totalStat(p, 'agi') * 0.01)
 export const goldBonus = (p: Player) => 1 + Math.min(0.5, totalStat(p, 'luck') * 0.01)
