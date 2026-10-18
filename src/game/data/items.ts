@@ -46,6 +46,7 @@ export const SPELLS: Spell[] = [
   { id: 'frost-nova', name: '프로스트노바', mp: 48, power: 130, price: 15000, effect: 'chill', chance: 1, desc: '적 공격 약화', cycle: 1 },
   { id: 'thunder-storm', name: '썬더스톰', mp: 56, power: 145, price: 18000, effect: 'stun', chance: 0.5, desc: '절반 확률로 기절', cycle: 1 },
   { id: 'supernova', name: '초신성', mp: 90, power: 240, price: 45000, effect: 'burn', chance: 1, desc: '반드시 화상', cycle: 2 },
+  { id: 'black-hole', name: '블랙홀', mp: 120, power: 340, price: 90000, effect: 'stun', chance: 0.7, desc: '70% 확률로 기절', cycle: 3 },
 ]
 
 export interface Equip {
@@ -86,6 +87,9 @@ export const EQUIPS: Equip[] = [
   { id: 'sun-greatsword', name: '태양의 대검', slot: 'weapon', str: 115, def: 0, int: 0, price: 26000, cycle: 2 },
   { id: 'sun-staff', name: '태양의 지팡이', slot: 'weapon', str: 16, def: 0, int: 115, price: 27000, cycle: 2 },
   { id: 'eclipse-dagger', name: '일식의 단검', slot: 'weapon', str: 72, def: 0, int: 0, agi: 18, crit: 34, price: 26000, cycle: 2 },
+  { id: 'nebula-greatsword', name: '성운의 대검', slot: 'weapon', str: 165, def: 0, int: 0, price: 60000, cycle: 3 },
+  { id: 'nebula-staff', name: '성운의 지팡이', slot: 'weapon', str: 22, def: 0, int: 165, price: 62000, cycle: 3 },
+  { id: 'nebula-dagger', name: '성운의 단검', slot: 'weapon', str: 102, def: 0, int: 0, agi: 24, crit: 44, price: 60000, cycle: 3 },
   // 방어구
   { id: 'cloth', name: '천옷', slot: 'armor', str: 0, def: 3, int: 0, price: 40 },
   { id: 'leather-armor', name: '가죽갑옷', slot: 'armor', str: 0, def: 8, int: 0, price: 250 },
@@ -102,6 +106,8 @@ export const EQUIPS: Equip[] = [
   { id: 'starlight-robe', name: '별빛 로브', slot: 'armor', str: 0, def: 42, int: 54, price: 10500, cycle: 1 },
   { id: 'sun-plate', name: '태양의 갑주', slot: 'armor', str: 0, def: 125, int: 0, price: 28000, cycle: 2 },
   { id: 'dawn-robe', name: '여명의 로브', slot: 'armor', str: 0, def: 68, int: 88, price: 29000, cycle: 2 },
+  { id: 'nebula-plate', name: '성운의 갑주', slot: 'armor', str: 0, def: 180, int: 0, price: 64000, cycle: 3 },
+  { id: 'nebula-robe', name: '성운의 로브', slot: 'armor', str: 0, def: 98, int: 128, price: 66000, cycle: 3 },
   // 장신구 — 주 스텟이 아닌 민첩·치명·운을 채우는 자리
   { id: 'lucky-coin', name: '행운의 동전', slot: 'accessory', str: 0, def: 0, int: 0, luck: 8, price: 200 },
   { id: 'copper-ring', name: '구리 반지', slot: 'accessory', str: 3, def: 3, int: 0, price: 300 },
@@ -113,6 +119,9 @@ export const EQUIPS: Equip[] = [
   { id: 'lich-crown', name: '망자의 왕관', slot: 'accessory', str: 0, def: 14, int: 30, luck: 8, price: 0, dropFrom: 'lich-king' },
   { id: 'hero-emblem', name: '영웅의 증표', slot: 'accessory', str: 12, def: 12, int: 12, agi: 8, crit: 8, price: 8000, cycle: 1 },
   { id: 'sun-crest', name: '태양의 문장', slot: 'accessory', str: 20, def: 20, int: 20, agi: 12, crit: 12, price: 24000, cycle: 2 },
+  { id: 'nebula-crest', name: '성운의 문장', slot: 'accessory', str: 30, def: 30, int: 30, agi: 16, crit: 16, price: 55000, cycle: 3 },
+  { id: 'star-core', name: '별의 심장', slot: 'accessory', str: 24, def: 24, int: 40, crit: 14, luck: 10, price: 0, dropFrom: 'fallen-star' },
+
 ]
 
 export const SLOTS = [

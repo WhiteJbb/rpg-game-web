@@ -538,7 +538,22 @@ describe('engine', () => {
     }
     expect(seen.has('coffin') || seen.has('bones') || seen.has('fairy-ring')).toBe(false)
     expect(seen.has('beehive')).toBe(true)
+    expect(seen.has('star-shard') || seen.has('kobold-shaman')).toBe(false) // 4회차 콘텐츠는 아직
+
+    // 4회차: 변종·사건·장비·마법이 열린다
+    const c3 = { ...s, cycle: 3 }
+    expect(regionMonsters(meadow, 3).map((m) => m.id)).toContain('kobold-shaman')
+    expect(errorOf(reduce(c3, { type: 'buySpell', spellId: 'black-hole' }, seeded(1)))).toBeUndefined()
+    expect(errorOf(reduce(c3, { type: 'buyEquip', equipId: 'nebula-plate' }, seeded(1)))).toBeUndefined()
+    expect(errorOf(reduce({ ...s, cycle: 2 }, { type: 'buyEquip', equipId: 'nebula-plate' }, seeded(1)))).toBeTruthy()
+    const seen3 = new Set<string>()
+    for (let i = 0; i < 200; i++) {
+      const r = reduce(c3, { type: 'explore', regionId: 'meadow' }, seeded(i))
+      if (r.pending) seen3.add(r.pending.eventId)
+    }
+    expect(seen3.has('star-shard')).toBe(true)
   })
+
 
   it('숨은 보스 회차 배율은 10회차에서 멈춘다 (그 뒤로는 다른 몬스터처럼 직선 성장)', () => {
     const hp = (c: number) => monsterById('ancient-dragon', c).hp
@@ -593,7 +608,8 @@ describe('전체 플레이 시뮬레이션', () => {
     const castle = REGIONS[REGIONS.length - 1]
     expect(secretBossOf(castle, 0)).toBe('ancient-dragon')
     expect(secretBossOf(castle, 1)).toBe('lich-king')
-    expect(secretBossOf(castle, 3)).toBe('ancient-dragon')
+    expect(secretBossOf(castle, 3)).toBe('fallen-star')
+    expect(secretBossOf(castle, 4)).toBe('ancient-dragon') // 끝까지 가면 처음부터
     s = { ...s, cycle: 1 }
     s = reduce(s, { type: 'buyEquip', equipId: 'dragonslayer-sword' }, seeded(1))
     expect(s.player.owned).toContain('dragonslayer-sword')
