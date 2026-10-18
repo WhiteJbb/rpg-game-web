@@ -308,6 +308,8 @@ input {
 .spell-fx-lightning-bolt, .spell-fx-thunder-storm { filter: drop-shadow(0 0 26px #fff27a); }
 .spell-fx-frost-nova { filter: drop-shadow(0 0 26px #a8e4ff); }
 .spell-fx-supernova { filter: drop-shadow(0 0 30px #ffb347) drop-shadow(0 0 12px #fff); animation-name: spell-meteor; }
+.spell-fx-black-hole { filter: drop-shadow(0 0 30px #a070ff) drop-shadow(0 0 10px #fff); }
+
 .spell-fx-meteor { animation-name: spell-meteor; }
 @keyframes spell-meteor {
   0% { transform: translate(40%, -260%) scale(0.6) rotate(20deg); opacity: 0; }

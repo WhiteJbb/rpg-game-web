@@ -133,6 +133,24 @@ const DEFS: Def[] = [
     { kind: 'charge', name: '핏빛 찌르기', chance: 0.25 },
     { kind: 'drain', name: '흡혈', chance: 0.25 },
   ]),
+  // 4회차부터 섞여 나오는 변종 — 2회차 변종보다 한 단계 더 위
+  mk('kobold-shaman', '코볼트 주술사', 5, { hp: 0.9, atk: 1.1, res: 1.5 }, [
+    { kind: 'poison', name: '저주의 가루', chance: 0.3 },
+    { kind: 'drain', name: '생기 갈취', chance: 0.25 },
+  ]),
+  mk('shadow-wolf', '그림자 늑대', 10, { hp: 1.1, atk: 1.25, def: 0.9 }, [
+    { kind: 'double', name: '그림자 물기', chance: 0.35 },
+    { kind: 'stun', name: '기습', chance: 0.2 },
+  ]),
+  mk('elder-treant', '고목 트렌트', 17, { hp: 1.6, def: 2.0, res: 0.4 }, [
+    { kind: 'charge', name: '대지 뒤흔들기', chance: 0.3 },
+    { kind: 'heavy', name: '거대한 가지', chance: 0.25 },
+  ]),
+  mk('blood-countess', '핏빛 백작부인', 25, { hp: 1.15, atk: 1.15, res: 1.5 }, [
+    { kind: 'drain', name: '피의 입맞춤', chance: 0.3 },
+    { kind: 'charge', name: '핏빛 왈츠', chance: 0.25 },
+    { kind: 'poison', name: '저주', chance: 0.2 },
+  ]),
   // 엔딩 이후의 숨은 보스. 고룡은 비늘이 두꺼운 대신 마법에 약하다 (마법사는 HP 보정이 없어 긴 보스전에서 불리한 것을 여기서 맞춘다)
   mk('ancient-dragon', '고룡', 32, { boss: true, secret: true, hp: 1.15, res: 0.4 }, [
     { kind: 'charge', name: '멸망의 숨결', chance: 0.35 },
@@ -148,6 +166,12 @@ const DEFS: Def[] = [
     { kind: 'stun', name: '별의 추락', chance: 0.2 },
     { kind: 'double', name: '초승달 베기', chance: 0.25 },
   ]),
+  mk('fallen-star', '추락한 별', 32, { boss: true, secret: true, hp: 1.25, atk: 1.1 }, [
+    { kind: 'charge', name: '별의 낙하', chance: 0.35 },
+    { kind: 'stun', name: '섬광', chance: 0.2 },
+    { kind: 'double', name: '유성우', chance: 0.25 },
+  ]),
+
 ]
 
 /** 1회차 기준 몬스터 목록 */

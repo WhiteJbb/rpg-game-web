@@ -27,6 +27,9 @@ export interface EventDef {
   onlyWhenHurt?: boolean
   /** 이 지역에서만 등장 */
   regionId?: string
+  /** 이 회차(0부터)부터 등장 */
+  cycle?: number
+
   /** 마지막 선택지는 항상 비용 없이 지나갈 수 있어야 한다 */
   choices: Choice[]
 }
@@ -202,6 +205,23 @@ export const EVENTS: EventDef[] = [
       },
       { label: '못을 박아 둔다', outcomes: [{ weight: 1, text: '톡톡 소리가 멎었다. 왠지 뿌듯하다.', exp: 8 }] },
       pass('지나간다', '소리는 점점 작아졌다. 뒤돌아보지 않기로 했다.'),
+    ],
+  },
+  {
+    id: 'star-shard',
+    title: '별의 파편',
+    text: '하늘에서 떨어진 무언가가 땅에 박혀 식어 가고 있다. 금 간 틈으로 희미한 빛이 새어 나온다.',
+    cycle: 3,
+    choices: [
+      {
+        label: '만져 본다',
+        outcomes: [
+          { weight: 50, text: '파편이 부서지며 금빛 가루가 쏟아졌다. 값이 꽤 나갈 것 같다.', gold: 6 },
+          { weight: 25, text: '별의 기운이 손끝을 타고 온몸에 스민다.', exp: 3 },
+          { weight: 25, text: '파편이 꿈틀거리더니... 몬스터로 변했다!', ambush: true },
+        ],
+      },
+      pass('내버려 둔다', '하늘에서 온 것은 하늘에 맡기기로 했다.'),
     ],
   },
 ]

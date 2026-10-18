@@ -130,7 +130,8 @@ export function reduce(prev: GameState, action: Action, rng: Rng): GameState {
       const region = regionById(action.regionId)
       if (rng() < R.EVENT_CHANCE) {
         const hurt = p.hp < R.maxHp(p) || p.mp < R.maxMp(p)
-        const pool = EVENTS.filter((e) => (hurt || !e.onlyWhenHurt) && (!e.regionId || e.regionId === region.id))
+        const pool = EVENTS.filter((e) => (hurt || !e.onlyWhenHurt) && (!e.regionId || e.regionId === region.id) && (e.cycle ?? 0) <= s.cycle)
+
         const ev = pool[Math.floor(rng() * pool.length)]
         s.pending = { eventId: ev.id, regionId: region.id }
         emit({ t: 'event', eventId: ev.id })
