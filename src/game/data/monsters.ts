@@ -17,6 +17,7 @@ export interface Monster {
   exp: number
   gold: number
   boss: boolean
+  bgm?: string
   specials: Special[]
 }
 
@@ -28,6 +29,8 @@ interface Mods {
   boss?: boolean
   /** 숨은 보스: 회차마다 보스 배율이 더 붙는다 (회차 장비·강화로 강해진 플레이어를 따라가도록) */
   secret?: boolean
+  /** 전투 배경음악 트랙 id (없으면 몬스터 id와 같은 곡 → 보스/일반 전투 곡) */
+  bgm?: string
 }
 
 interface Def {
@@ -75,6 +78,7 @@ function build({ id, name, level, mods, specials }: Def, cycle: number): Monster
   return {
     id,
     name,
+    bgm: mods.bgm,
     level: l,
     // 제곱 항은 전직(Lv.10) 이후 강해지는 플레이어를 따라가기 위한 것
     hp: Math.round(curve(l, 0.68, 16, 25, HP_SLOPE) * (mods.hp ?? 1) * (boss ? BOSS_HP : 1) * secretHp),
@@ -156,17 +160,19 @@ const DEFS: Def[] = [
     { kind: 'charge', name: '멸망의 숨결', chance: 0.35 },
     { kind: 'heavy', name: '꼬리 휩쓸기', chance: 0.25 },
   ]),
-  mk('lich-king', '망자의 왕', 32, { boss: true, secret: true, hp: 1.2, atk: 1.05, res: 1.8 }, [
+  // 숨은 보스 전용 곡은 고룡 것만 있어서 나머지는 있는 곡을 돌려 쓴다
+  mk('lich-king', '망자의 왕', 32, { boss: true, secret: true, hp: 1.2, atk: 1.05, res: 1.8, bgm: 'boss' }, [
     { kind: 'charge', name: '죽음의 선고', chance: 0.3 },
     { kind: 'drain', name: '영혼 흡수', chance: 0.25 },
     { kind: 'poison', name: '역병', chance: 0.2 },
   ]),
-  mk('night-avatar', '밤의 화신', 32, { boss: true, secret: true, hp: 1.2, def: 1.3, res: 1.3 }, [
+  mk('night-avatar', '밤의 화신', 32, { boss: true, secret: true, hp: 1.2, def: 1.3, res: 1.3, bgm: 'ancient-dragon' }, [
     { kind: 'charge', name: '끝없는 밤', chance: 0.35 },
     { kind: 'stun', name: '별의 추락', chance: 0.2 },
     { kind: 'double', name: '초승달 베기', chance: 0.25 },
   ]),
-  mk('fallen-star', '추락한 별', 32, { boss: true, secret: true, hp: 1.25, atk: 1.1 }, [
+  mk('fallen-star', '추락한 별', 32, { boss: true, secret: true, hp: 1.25, atk: 1.1, bgm: 'title' }, [
+
     { kind: 'charge', name: '별의 낙하', chance: 0.35 },
     { kind: 'stun', name: '섬광', chance: 0.2 },
     { kind: 'double', name: '유성우', chance: 0.25 },

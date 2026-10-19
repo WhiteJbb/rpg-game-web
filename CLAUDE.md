@@ -84,7 +84,7 @@ src/
 
 - 효과음은 파일 없이 `src/ui/sfx.ts`에서 Web Audio로 합성한다.
 - 배경음악은 Stable Audio로 만든 곡을 `afconvert -f m4af -d aac -b 112000 -q 127 <원본.wav> src/assets/bgm/<id>.m4a`로 변환해 넣는다. 원본 WAV는 git에 올리지 않는다.
-- 트랙 id: `title`, `town`, `battle`, `boss`, `ending`, 그리고 지역 id와 같은 이름의 지역 곡. 몬스터 id와 같은 이름의 곡이 있으면 그 몬스터 전투에서 대신 나온다(`ancient-dragon`). 전투 배경도 같은 방식이다(`backgrounds/<몬스터 id>`). 장면과 곡의 연결은 `src/ui/App.tsx`의 `track`.
+- 트랙 id: `title`, `town`, `battle`, `boss`, `ending`, 그리고 지역 id와 같은 이름의 지역 곡. 몬스터 id와 같은 이름의 곡이 있으면 그 몬스터 전투에서 대신 나온다(`ancient-dragon`). 곡이 없는 몬스터는 `monsters.ts`의 `bgm`으로 있는 곡을 돌려 쓸 수 있다 (망자의 왕 → `boss`, 밤의 화신 → `ancient-dragon`, 추락한 별 → `title`). 전투 배경도 같은 방식이다(`backgrounds/<몬스터 id>`). 장면과 곡의 연결은 `src/ui/App.tsx`의 `track`.
 
 ### 화풍: 손그림 동화풍
 

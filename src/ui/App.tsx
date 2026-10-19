@@ -6,7 +6,6 @@ import type { Action, GameState } from '../game/types'
 import { JOBS, canTakeJob, jobById } from '../game/data/jobs'
 import * as R from '../game/rules'
 import { monsterById } from '../game/data/monsters'
-import { isSecretBoss } from '../game/data/regions'
 import { Scene } from './art'
 import { hasBgm, setBgm } from './bgm'
 import { Dialog, Hud, MuteButton } from './common'
@@ -102,7 +101,8 @@ export function App() {
   const track =
     screen.n === 'title' || !game ? 'title' :
     screen.n === 'region' ? screen.id :
-    screen.n === 'battle' ? (hasBgm(screen.monsterId) ? screen.monsterId : isSecretBoss(screen.monsterId) ? 'ancient-dragon' : monsterById(screen.monsterId).boss ? 'boss' : 'battle') :
+    screen.n === 'battle' ? (hasBgm(screen.monsterId) ? screen.monsterId : (monsterById(screen.monsterId).bgm ?? (monsterById(screen.monsterId).boss ? 'boss' : 'battle'))) :
+
     screen.n === 'story' ? (screen.lines === ENDING ? 'ending' : null) :
     screen.n === 'ending' ? 'ending' :
     'town'
